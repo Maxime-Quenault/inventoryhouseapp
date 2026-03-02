@@ -34,7 +34,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.inventoryhouse.data.local.session.SessionStore
+import com.example.inventoryhouse.data.remote.api.AuthApi
+import com.example.inventoryhouse.data.remote.network.ApiClient
+import com.example.inventoryhouse.data.repository.RemoteAuthRepository
+import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModel
+import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModelFactory
+import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModel
+import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModelFactory
 import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : ComponentActivity() {
     override
@@ -62,6 +73,20 @@ fun InventoryHouseApp() {
     val onboardingCompletedState = produceState<Boolean?>(initialValue = null) {
         value = onboardingRepo.onboardingCompleted.first()
     }
+
+    val sessionStore = remember { SessionStore(appContext) }
+    val authApi = remember { ApiClient.authApi }
+    val authRepository = remember { RemoteAuthRepository(authApi, sessionStore) }
+
+    val loginVm: LoginViewModel = viewModel(
+        factory = LoginViewModelFactory(authRepository)
+    )
+    val loginState by loginVm.state.collectAsState()
+
+    val registerVm: RegisterViewModel = viewModel(
+        factory = RegisterViewModelFactory(authRepository)
+    )
+    val registerState by registerVm.state.collectAsState()
 
     // Root destination (ONBOARDING / LOGIN / REGISTER / MAIN)
     var root by rememberSaveable { mutableStateOf<RootDestination?>(null) }
@@ -94,22 +119,30 @@ fun InventoryHouseApp() {
 
         RootDestination.LOGIN -> {
             LoginScreen(
-                onLoginSuccess = { root = RootDestination.MAIN },
+                state = loginState,
+                onEvent = { event ->
+                    loginVm.onEvent(event) {
+                        root = RootDestination.MAIN
+                    }
+                },
                 onGoToRegister = { root = RootDestination.REGISTER }
             )
+
         }
 
         RootDestination.REGISTER -> {
             RegisterScreen(
-                onRegisterSuccess = { root = RootDestination.MAIN },
+                state = registerState,
+                onEvent = { event ->
+                    registerVm.onEvent(event) {
+                        root = RootDestination.MAIN
+                    }
+                },
                 onGoToLogin = { root = RootDestination.LOGIN }
             )
         }
 
         RootDestination.MAIN -> {
-            // -----------------------------
-            // TON CODE EXISTANT (MAIN)
-            // -----------------------------
             val pagerState = rememberPagerState(
                 initialPage = 0,
                 pageCount = { AppDestinations.entries.size }

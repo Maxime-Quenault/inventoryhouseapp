@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.fromColorLong
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -22,6 +24,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inventoryhouse.ui.component.PagerIndicator
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
+import com.example.inventoryhouse.ui.theme.GreenBtn
+import com.example.inventoryhouse.ui.theme.SoftBlack
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -156,7 +160,15 @@ fun OnboardingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GreenBtn,
+                    contentColor = SoftBlack
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 2.dp
+                )
             ) {
                 Text(if (!isLast) "Suivant" else "Créer un compte")
             }
