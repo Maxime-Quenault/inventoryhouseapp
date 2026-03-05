@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Card
@@ -40,6 +42,7 @@ fun HomeScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Text("Accueil Application", style = MaterialTheme.typography.titleLarge, color = Color.Gray)
             Spacer(Modifier.height(12.dp))
@@ -152,6 +155,8 @@ fun HomeScreen(
                     }
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
