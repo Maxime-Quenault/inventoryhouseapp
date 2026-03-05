@@ -38,11 +38,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inventoryhouse.data.local.session.SessionStore
 import com.example.inventoryhouse.data.remote.api.AuthApi
 import com.example.inventoryhouse.data.remote.network.ApiClient
+import com.example.inventoryhouse.data.repository.HomeRepositoryImpl
 import com.example.inventoryhouse.data.repository.RemoteAuthRepository
 import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModel
 import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModelFactory
 import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModel
 import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModelFactory
+import com.example.inventoryhouse.ui.screen.home.HomeViewModel
 import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -87,6 +89,12 @@ fun InventoryHouseApp() {
         factory = RegisterViewModelFactory(authRepository)
     )
     val registerState by registerVm.state.collectAsState()
+
+    val homeRepository = remember { HomeRepositoryImpl() }
+    val homeVm: HomeViewModel = viewModel(
+        factory = HomeViewModel.provideFactory(homeRepository)
+    )
+    val homeState by homeVm.state.collectAsState()
 
     // Root destination (ONBOARDING / LOGIN / REGISTER / MAIN)
     var root by rememberSaveable { mutableStateOf<RootDestination?>(null) }
@@ -195,7 +203,11 @@ fun InventoryHouseApp() {
                                 .padding(innerPadding)
                         ) { page ->
                             when (AppDestinations.entries[page]) {
-                                AppDestinations.HOME -> HomeScreen(modifier = Modifier.padding(innerPadding))
+                                AppDestinations.HOME -> HomeScreen(
+                                    state = homeState,
+                                    onEvent = homeVm::onEvent,
+                                    modifier = Modifier.padding(innerPadding)
+                                )
                                 AppDestinations.STOCK -> StockScreen(
                                     repository = productRepository,
                                     modifier = Modifier.padding(innerPadding)
