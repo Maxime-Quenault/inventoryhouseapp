@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -238,10 +239,10 @@ private fun FloatingBottomBar(
 ) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(bottom = 12.dp),
-        contentAlignment = Alignment.BottomCenter
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             shape = RoundedCornerShape(30.dp),
@@ -250,7 +251,6 @@ private fun FloatingBottomBar(
             tonalElevation = 2.dp,
             modifier = Modifier
                 .widthIn(max = 440.dp)
-                .padding(horizontal = 16.dp)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
