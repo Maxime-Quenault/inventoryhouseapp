@@ -2,10 +2,8 @@ package com.example.inventoryhouse.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.FoodBank
-import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -15,7 +13,7 @@ enum class AppDestinations(
     val icon: ImageVector
 ) {
     HOME(
-        label = "Maison",
+        label = "Home",
         icon = Icons.Default.Home
     ),
     STOCK(
@@ -23,15 +21,15 @@ enum class AppDestinations(
         icon = Icons.AutoMirrored.Filled.FormatListBulleted
     ),
     ADD_PRODUCT(
-        label = "Scan",
+        label = "Ajout de produit",
         icon = Icons.Default.QrCodeScanner
     ),
     FOOD(
-        label = "Recettes",
+        label = "Recette",
         icon = Icons.Default.FoodBank
     ),
     PROFILE(
-        label = "Profile",
-        icon = Icons.Default.AccountBox
+        label = "Famille",
+        icon = Icons.Default.Groups
     ),
 }
