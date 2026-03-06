@@ -2,6 +2,7 @@ package com.example.inventoryhouse
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import com.example.inventoryhouse.ui.screen.food.FoodScreen
 import com.example.inventoryhouse.ui.screen.home.HomeScreen
 import com.example.inventoryhouse.ui.screen.profile.ProfileScreen
 import com.example.inventoryhouse.ui.screen.scanner.ScannerScreen
+import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.scanner.manualadd.AddProductScreen
 import com.example.inventoryhouse.ui.screen.stock.StockScreen
 import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
@@ -157,6 +159,7 @@ fun InventoryHouseApp() {
             )
 
             var showAddProductScreen by rememberSaveable { mutableStateOf(false) }
+            var showSettingsScreen by rememberSaveable { mutableStateOf(false) }
 
             val database = remember {
                 Room.databaseBuilder(
@@ -170,6 +173,13 @@ fun InventoryHouseApp() {
                 InMemoryProductRepository(database.productDao())
             }
 
+            BackHandler(enabled = showAddProductScreen || showSettingsScreen) {
+                when {
+                    showAddProductScreen -> showAddProductScreen = false
+                    showSettingsScreen -> showSettingsScreen = false
+                }
+            }
+
             if (showAddProductScreen) {
                 AddProductScreen(
                     leaveScreen = { showAddProductScreen = false },
@@ -178,6 +188,8 @@ fun InventoryHouseApp() {
                     },
                     modifier = Modifier.fillMaxSize()
                 )
+            } else if (showSettingsScreen) {
+                SettingsScreen(modifier = Modifier.fillMaxSize())
             } else {
                 NavigationSuiteScaffold(
                     navigationSuiteItems = {
@@ -206,6 +218,7 @@ fun InventoryHouseApp() {
                                 AppDestinations.HOME -> HomeScreen(
                                     state = homeState,
                                     onEvent = homeVm::onEvent,
+                                    onSettingsClick = { showSettingsScreen = true },
                                     modifier = Modifier.padding(innerPadding)
                                 )
                                 AppDestinations.STOCK -> StockScreen(
