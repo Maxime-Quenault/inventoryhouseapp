@@ -5,55 +5,75 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Room
 import com.example.inventoryhouse.data.AppDatabase
+import com.example.inventoryhouse.data.local.session.SessionStore
+import com.example.inventoryhouse.data.remote.network.ApiClient
+import com.example.inventoryhouse.data.repository.HomeRepositoryImpl
 import com.example.inventoryhouse.data.repository.InMemoryProductRepository
 import com.example.inventoryhouse.data.repository.OnboardingRepositoryImpl
+import com.example.inventoryhouse.data.repository.RemoteAuthRepository
 import com.example.inventoryhouse.ui.navigation.AppDestinations
 import com.example.inventoryhouse.ui.navigation.RootDestination
 import com.example.inventoryhouse.ui.screen.auth.login.LoginScreen
+import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModel
+import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModelFactory
 import com.example.inventoryhouse.ui.screen.auth.register.RegisterScreen
+import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModel
+import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModelFactory
 import com.example.inventoryhouse.ui.screen.food.FoodScreen
 import com.example.inventoryhouse.ui.screen.home.HomeScreen
+import com.example.inventoryhouse.ui.screen.home.HomeViewModel
+import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
 import com.example.inventoryhouse.ui.screen.profile.ProfileScreen
 import com.example.inventoryhouse.ui.screen.scanner.ScannerScreen
-import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.scanner.manualadd.AddProductScreen
+import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.stock.StockScreen
-import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
+import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.inventoryhouse.data.local.session.SessionStore
-import com.example.inventoryhouse.data.remote.api.AuthApi
-import com.example.inventoryhouse.data.remote.network.ApiClient
-import com.example.inventoryhouse.data.repository.HomeRepositoryImpl
-import com.example.inventoryhouse.data.repository.RemoteAuthRepository
-import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModel
-import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModelFactory
-import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModel
-import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModelFactory
-import com.example.inventoryhouse.ui.screen.home.HomeViewModel
-import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-
 class MainActivity : ComponentActivity() {
-    override
-    fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -64,66 +84,45 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
 @Composable
 fun InventoryHouseApp() {
     val appContext = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
 
-    // Repo onboarding (DataStore)
     val onboardingRepo = remember { OnboardingRepositoryImpl(appContext) }
-
-    // On charge une seule fois la valeur "onboardingCompleted"
     val onboardingCompletedState = produceState<Boolean?>(initialValue = null) {
         value = onboardingRepo.onboardingCompleted.first()
     }
 
     val sessionStore = remember { SessionStore(appContext) }
-    val authApi = remember { ApiClient.authApi }
-    val authRepository = remember { RemoteAuthRepository(authApi, sessionStore) }
+    val authRepository = remember { RemoteAuthRepository(ApiClient.authApi, sessionStore) }
 
-    val loginVm: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory(authRepository)
-    )
+    val loginVm: LoginViewModel = viewModel(factory = LoginViewModelFactory(authRepository))
     val loginState by loginVm.state.collectAsState()
 
-    val registerVm: RegisterViewModel = viewModel(
-        factory = RegisterViewModelFactory(authRepository)
-    )
+    val registerVm: RegisterViewModel = viewModel(factory = RegisterViewModelFactory(authRepository))
     val registerState by registerVm.state.collectAsState()
 
     val homeRepository = remember { HomeRepositoryImpl() }
-    val homeVm: HomeViewModel = viewModel(
-        factory = HomeViewModel.provideFactory(homeRepository)
-    )
+    val homeVm: HomeViewModel = viewModel(factory = HomeViewModel.provideFactory(homeRepository))
     val homeState by homeVm.state.collectAsState()
 
-    // Root destination (ONBOARDING / LOGIN / REGISTER / MAIN)
     var root by rememberSaveable { mutableStateOf<RootDestination?>(null) }
 
     LaunchedEffect(onboardingCompletedState.value) {
         val completed = onboardingCompletedState.value ?: return@LaunchedEffect
         if (root == null) {
-            // ➜ choix par défaut après onboarding :
-            // - si tu veux forcer auth : RootDestination.LOGIN
-            // - si tu veux aller direct app : RootDestination.MAIN
             root = if (completed) RootDestination.MAIN else RootDestination.ONBOARDING
         }
     }
 
-    // Petit écran vide tant que DataStore n'a pas répondu
     if (root == null) return
 
     when (root!!) {
         RootDestination.ONBOARDING -> {
             OnboardingScreen(
-                onGoToRegister = {
-                    // OnboardingScreen marque déjà "completed" via son ViewModel
-                    root = RootDestination.REGISTER
-                },
-                onGoToLogin = {
-                    root = RootDestination.LOGIN
-                }
+                onGoToRegister = { root = RootDestination.REGISTER },
+                onGoToLogin = { root = RootDestination.LOGIN }
             )
         }
 
@@ -137,7 +136,6 @@ fun InventoryHouseApp() {
                 },
                 onGoToRegister = { root = RootDestination.REGISTER }
             )
-
         }
 
         RootDestination.REGISTER -> {
@@ -169,9 +167,7 @@ fun InventoryHouseApp() {
                 ).build()
             }
 
-            val productRepository = remember {
-                InMemoryProductRepository(database.productDao())
-            }
+            val productRepository = remember { InMemoryProductRepository(database.productDao()) }
 
             BackHandler(enabled = showAddProductScreen || showSettingsScreen) {
                 when {
@@ -183,55 +179,110 @@ fun InventoryHouseApp() {
             if (showAddProductScreen) {
                 AddProductScreen(
                     leaveScreen = { showAddProductScreen = false },
-                    onProductAdded = {
-                        scope.launch { productRepository.addProduct(it) }
-                    },
+                    onProductAdded = { scope.launch { productRepository.addProduct(it) } },
                     modifier = Modifier.fillMaxSize()
                 )
             } else if (showSettingsScreen) {
                 SettingsScreen(modifier = Modifier.fillMaxSize())
             } else {
-                NavigationSuiteScaffold(
-                    navigationSuiteItems = {
-                        AppDestinations.entries.forEachIndexed { index, destination ->
-                            item(
-                                icon = {
-                                    Icon(destination.icon, contentDescription = destination.label)
-                                },
-                                label = { Text(destination.label) },
-                                selected = pagerState.currentPage == index,
-                                onClick = {
-                                    scope.launch { pagerState.animateScrollToPage(index) }
-                                }
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        FloatingBottomBar(
+                            destinations = AppDestinations.entries,
+                            selectedIndex = pagerState.currentPage,
+                            onItemClick = { index ->
+                                scope.launch { pagerState.animateScrollToPage(index) }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) { page ->
+                        when (AppDestinations.entries[page]) {
+                            AppDestinations.HOME -> HomeScreen(
+                                state = homeState,
+                                onEvent = homeVm::onEvent,
+                                onSettingsClick = { showSettingsScreen = true },
+                                modifier = Modifier
                             )
+
+                            AppDestinations.STOCK -> StockScreen(
+                                repository = productRepository,
+                                modifier = Modifier
+                            )
+
+                            AppDestinations.ADD_PRODUCT -> ScannerScreen(
+                                modifier = Modifier,
+                                onAddProductClick = { showAddProductScreen = true }
+                            )
+
+                            AppDestinations.FOOD -> FoodScreen(modifier = Modifier)
+                            AppDestinations.PROFILE -> ProfileScreen(modifier = Modifier)
                         }
                     }
-                ) {
-                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
-                        ) { page ->
-                            when (AppDestinations.entries[page]) {
-                                AppDestinations.HOME -> HomeScreen(
-                                    state = homeState,
-                                    onEvent = homeVm::onEvent,
-                                    onSettingsClick = { showSettingsScreen = true },
-                                    modifier = Modifier.padding(innerPadding)
-                                )
-                                AppDestinations.STOCK -> StockScreen(
-                                    repository = productRepository,
-                                    modifier = Modifier.padding(innerPadding)
-                                )
-                                AppDestinations.ADD_PRODUCT -> ScannerScreen(
-                                    modifier = Modifier.padding(innerPadding),
-                                    onAddProductClick = { showAddProductScreen = true }
-                                )
-                                AppDestinations.FOOD -> FoodScreen(modifier = Modifier.padding(innerPadding))
-                                AppDestinations.PROFILE -> ProfileScreen(modifier = Modifier.padding(innerPadding))
-                            }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FloatingBottomBar(
+    destinations: List<AppDestinations>,
+    selectedIndex: Int,
+    onItemClick: (Int) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(30.dp),
+            color = Color(0xFFFDF6F3),
+            shadowElevation = 8.dp,
+            tonalElevation = 2.dp,
+            modifier = Modifier
+                .widthIn(max = 440.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                destinations.forEachIndexed { index, destination ->
+                    val selected = selectedIndex == index
+                    val containerColor = if (selected) Color(0xFFFF5C00) else Color(0xFFFFEFE8)
+                    val contentColor = if (selected) Color.White else Color(0xFFE25A00)
+
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(containerColor)
+                            .clickable { onItemClick(index) }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = destination.icon,
+                            contentDescription = destination.label,
+                            tint = contentColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        if (selected) {
+                            Text(
+                                text = destination.label,
+                                color = contentColor,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
