@@ -12,17 +12,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -185,23 +187,10 @@ fun InventoryHouseApp() {
             } else if (showSettingsScreen) {
                 SettingsScreen(modifier = Modifier.fillMaxSize())
             } else {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = {
-                        FloatingBottomBar(
-                            destinations = AppDestinations.entries,
-                            selectedIndex = pagerState.currentPage,
-                            onItemClick = { index ->
-                                scope.launch { pagerState.animateScrollToPage(index) }
-                            }
-                        )
-                    }
-                ) { innerPadding ->
+                Box(modifier = Modifier.fillMaxSize()) {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
+                        modifier = Modifier.fillMaxSize()
                     ) { page ->
                         when (AppDestinations.entries[page]) {
                             AppDestinations.HOME -> HomeScreen(
@@ -225,6 +214,15 @@ fun InventoryHouseApp() {
                             AppDestinations.PROFILE -> ProfileScreen(modifier = Modifier)
                         }
                     }
+
+                    FloatingBottomBar(
+                        destinations = AppDestinations.entries,
+                        selectedIndex = pagerState.currentPage,
+                        onItemClick = { index ->
+                            scope.launch { pagerState.animateScrollToPage(index) }
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
                 }
             }
         }
@@ -235,40 +233,47 @@ fun InventoryHouseApp() {
 private fun FloatingBottomBar(
     destinations: List<AppDestinations>,
     selectedIndex: Int,
-    onItemClick: (Int) -> Unit
+    onItemClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(30.dp),
-            color = Color(0xFFFDF6F3),
+            shape = RoundedCornerShape(34.dp),
+            color = Color(0xFFF0FAF0),
             shadowElevation = 8.dp,
             tonalElevation = 2.dp,
             modifier = Modifier
+                .fillMaxWidth()
                 .widthIn(max = 440.dp)
+                .heightIn(min = 78.dp)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 destinations.forEachIndexed { index, destination ->
                     val selected = selectedIndex == index
-                    val containerColor = if (selected) Color(0xFFFF5C00) else Color(0xFFFFEFE8)
-                    val contentColor = if (selected) Color.White else Color(0xFFE25A00)
+                    val containerColor = if (selected) Color(0xFF1FA541) else Color(0xFFDFF5E3)
+                    val contentColor = if (selected) Color.White else Color(0xFF1D7F35)
 
                     Row(
                         modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp)
                             .clip(CircleShape)
                             .background(containerColor)
                             .clickable { onItemClick(index) }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = destination.icon,
@@ -276,14 +281,15 @@ private fun FloatingBottomBar(
                             tint = contentColor,
                             modifier = Modifier.size(18.dp)
                         )
-                        if (selected) {
-                            Text(
-                                text = destination.label,
-                                color = contentColor,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                        Text(
+                            text = destination.label,
+                            color = contentColor,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .wrapContentWidth()
+                        )
                     }
                 }
             }
