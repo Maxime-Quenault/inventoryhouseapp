@@ -44,24 +44,18 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text("Accueil Application", style = MaterialTheme.typography.titleLarge, color = Color.Gray)
-            Spacer(Modifier.height(12.dp))
-
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.size(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(state.greetingTitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(state.username, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF13EC13))
                 )
-                Spacer(Modifier.size(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(state.greetingTitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text(state.username, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                IconButton(onClick = { onEvent(HomeEvent.RefreshData) }) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Notifications")
-                }
             }
 
             Spacer(Modifier.height(14.dp))

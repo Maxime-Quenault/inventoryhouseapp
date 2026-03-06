@@ -1,8 +1,8 @@
 package com.example.inventoryhouse.ui.screen.home
 
 data class HomeState(
-    val greetingTitle: String = "Content de vous revoir,",
-    val username: String = "Bonjour, Thomas",
+    val greetingTitle: String = "Bonjour,",
+    val username: String = "Maxime",
     val totalArticles: Int = 124,
     val totalCategories: Int = 8,
     val globalStockHealth: Int = 85,
