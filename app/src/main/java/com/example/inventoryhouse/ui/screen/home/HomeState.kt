@@ -15,6 +15,9 @@ data class HomeState(
     val recentMovements: List<RecentMovement> = listOf(
         RecentMovement(name = "Pâtes Fusilli", quantity = 3, note = "Ajouté par Thomas • Aujourd'hui, 10:30", delta = "+3"),
         RecentMovement(name = "Yaourt Nature", quantity = 2, note = "Consommé par Marie • Hier, 19:45", delta = "-2"),
+        RecentMovement(name = "Jus d'Orange", quantity = 1, note = "Ajouté par Thomas • Hier, 14:20", delta = "+1"),
+        RecentMovement(name = "Pâtes Fusilli", quantity = 3, note = "Ajouté par Thomas • Aujourd'hui, 10:30", delta = "+3"),
+        RecentMovement(name = "Yaourt Nature", quantity = 2, note = "Consommé par Marie • Hier, 19:45", delta = "-2"),
         RecentMovement(name = "Jus d'Orange", quantity = 1, note = "Ajouté par Thomas • Hier, 14:20", delta = "+1")
     )
 )

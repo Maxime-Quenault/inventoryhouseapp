@@ -240,7 +240,7 @@ private fun FloatingBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
@@ -254,9 +254,7 @@ private fun FloatingBottomBar(
                 .heightIn(min = 78.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 destinations.forEachIndexed { index, destination ->
@@ -281,15 +279,14 @@ private fun FloatingBottomBar(
                             tint = contentColor,
                             modifier = Modifier.size(18.dp)
                         )
-                        Text(
-                            text = destination.label,
-                            color = contentColor,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier
-                                .padding(start = 5.dp)
-                                .wrapContentWidth()
-                        )
+                        /*if (selected) {
+                            Text(
+                                text = destination.label,
+                                color = contentColor,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }*/
                     }
                 }
             }
