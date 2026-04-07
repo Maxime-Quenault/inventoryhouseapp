@@ -21,19 +21,15 @@ class StockViewModel(private val repository: ProductRepository) : ViewModel() {
     init {
         repository.getProductsStream()
             .onEach { products ->
-                _state.update { currentState ->
-                    currentState.copy(products = products)
-                }
+                _state.update { it.copy(products = products) }
             }
             .launchIn(viewModelScope)
     }
 
     fun onEvent(event: StockEvent) {
         when (event) {
-            is StockEvent.SelectLocation -> {
-                _state.update { it.copy(selectedLocation = event.location) }
-            }
-
+            is StockEvent.SearchChanged -> _state.update { it.copy(searchQuery = event.query) }
+            is StockEvent.SelectCategory -> _state.update { it.copy(selectedCategory = event.category) }
             is StockEvent.RemoveProduct -> {
                 viewModelScope.launch {
                     repository.removeProduct(event.product)
