@@ -61,8 +61,8 @@ class ScannerViewModel(
                             it.copy(
                                 isLoading = false,
                                 productName = name,
-                                brand = response.product.brands.orEmpty(),
-                                imageUrl = response.product.imageUrl
+                                brand = response.product?.brands.orEmpty(),
+                                imageUrl = response.product?.imageUrl
                             )
                         }
                     } else {
