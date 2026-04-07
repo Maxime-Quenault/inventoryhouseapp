@@ -66,8 +66,8 @@ import com.example.inventoryhouse.ui.screen.home.HomeScreen
 import com.example.inventoryhouse.ui.screen.home.HomeViewModel
 import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
 import com.example.inventoryhouse.ui.screen.profile.ProfileRoute
-import com.example.inventoryhouse.ui.screen.scanner.ScannerScreen
-import com.example.inventoryhouse.ui.screen.scanner.manualadd.AddProductScreen
+import com.example.inventoryhouse.ui.screen.scanner.ScannerRoute
+import com.example.inventoryhouse.ui.screen.scanner.manualadd.AddProductRoute
 import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.stock.StockRoute
 import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
@@ -179,7 +179,7 @@ fun InventoryHouseApp() {
             }
 
             if (showAddProductScreen) {
-                AddProductScreen(
+                AddProductRoute(
                     leaveScreen = { showAddProductScreen = false },
                     onProductAdded = { scope.launch { productRepository.addProduct(it) } },
                     modifier = Modifier.fillMaxSize()
@@ -205,7 +205,8 @@ fun InventoryHouseApp() {
                                 modifier = Modifier
                             )
 
-                            AppDestinations.ADD_PRODUCT -> ScannerScreen(
+                            AppDestinations.ADD_PRODUCT -> ScannerRoute(
+                                repository = productRepository,
                                 modifier = Modifier,
                                 onAddProductClick = { showAddProductScreen = true }
                             )
