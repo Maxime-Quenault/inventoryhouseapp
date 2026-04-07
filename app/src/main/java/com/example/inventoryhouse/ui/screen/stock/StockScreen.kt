@@ -1,28 +1,39 @@
 package com.example.inventoryhouse.ui.screen.stock
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.inventoryhouse.data.enums.Location
-import com.example.inventoryhouse.data.model.Product
 import com.example.inventoryhouse.domain.repository.ProductRepository
 
 @Composable
@@ -46,77 +57,93 @@ fun StockScreen(
     onEvent: (StockEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val locationOptions = listOf<Location?>(null) + Location.entries
+    val categoryOptions = listOf<StockCategory?>(null) + StockCategory.entries
 
-    LazyColumn(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        modifier = modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         item {
-            Text(
-                text = "Mon stock",
-                style = MaterialTheme.typography.headlineSmall
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = { onEvent(StockEvent.SearchChanged(it)) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Rechercher un aliment") },
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
             )
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                locationOptions.forEach { location ->
-                    val isSelected = state.selectedLocation == location
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(categoryOptions) { category ->
+                    val isSelected = category == state.selectedCategory
                     AssistChip(
-                        onClick = { onEvent(StockEvent.SelectLocation(location)) },
-                        label = {
-                            Text(
-                                if (location == null) "Tout" else location.label
-                            )
-                        },
-                        modifier = Modifier,
+                        onClick = { onEvent(StockEvent.SelectCategory(category)) },
+                        label = { Text(category?.label ?: "Tous") },
                         enabled = !isSelected
                     )
                 }
             }
         }
 
-        items(state.filteredProducts) { product ->
-            ProductItem(
-                product = product,
-                onDeleteClick = { onEvent(StockEvent.RemoveProduct(product)) }
-            )
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Sort, contentDescription = null, tint = Color(0xFF33C93E))
+                    Text("Trier par: Date d'expiration", color = Color(0xFF33C93E))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.FilterList, contentDescription = null, tint = Color(0xFF33C93E))
+                    Text("Filtrer", color = Color(0xFF33C93E))
+                }
+            }
+        }
+
+        items(state.displayItems) { item ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(Color(0xFFDFE6DF), shape = MaterialTheme.shapes.medium)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.name, style = MaterialTheme.typography.titleMedium)
+                        Text(item.details, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            item.expirationLabel,
+                            color = when (item.expirationTone) {
+                                ExpirationTone.SAFE -> Color(0xFF22B627)
+                                ExpirationTone.WARNING -> Color(0xFFFF8A00)
+                                ExpirationTone.DANGER -> Color(0xFFE63B31)
+                            },
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Column {
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Modifier")
+                        }
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Supprimer")
+                        }
+                    }
+                }
+            }
         }
     }
 }
-
-@Composable
-private fun ProductItem(
-    product: Product,
-    onDeleteClick: () -> Unit
-) {
-    Column(modifier = Modifier.padding(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = product.location.label,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Text(
-                text = product.expiredDate.toString(),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            IconButton(onClick = onDeleteClick) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Supprimer"
-                )
-            }
-        }
-    }
-}
-
-private val Location.label: String
-    get() = name.lowercase().replaceFirstChar { it.uppercase() }

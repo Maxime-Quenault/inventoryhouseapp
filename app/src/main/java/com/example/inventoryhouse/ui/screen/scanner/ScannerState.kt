@@ -1,15 +1,13 @@
 package com.example.inventoryhouse.ui.screen.scanner
 
-import com.example.inventoryhouse.data.enums.Location
-
 data class ScannerState(
     val barcode: String = "",
-    val selectedLocation: Location = Location.FRIDGE,
+    val isManualMode: Boolean = false,
     val expirationDate: String = "",
-    val isLoading: Boolean = false,
+    val quantity: Int = 1,
+    val category: String = "Produits laitiers",
     val productName: String = "",
-    val brand: String = "",
-    val imageUrl: String? = null,
+    val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null
 ) {

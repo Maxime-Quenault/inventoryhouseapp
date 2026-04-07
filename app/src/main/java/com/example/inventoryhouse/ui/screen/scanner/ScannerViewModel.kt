@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.data.model.Product
 import com.example.inventoryhouse.data.remote.api.OpenFoodFactsApi
 import com.example.inventoryhouse.domain.repository.ProductRepository
@@ -27,20 +28,17 @@ class ScannerViewModel(
     fun onEvent(event: ScannerEvent) {
         when (event) {
             is ScannerEvent.BarcodeChanged -> _state.update {
-                it.copy(barcode = event.barcode.filter { c -> c.isDigit() }.take(14), errorMessage = null)
+                it.copy(barcode = event.barcode.filter(Char::isDigit).take(14), errorMessage = null)
             }
 
-            is ScannerEvent.ExpirationDateChanged -> _state.update {
-                it.copy(expirationDate = event.value, errorMessage = null)
-            }
-
-            is ScannerEvent.LocationChanged -> _state.update {
-                it.copy(selectedLocation = event.location)
-            }
-
+            is ScannerEvent.ProductNameChanged -> _state.update { it.copy(productName = event.value, errorMessage = null) }
+            is ScannerEvent.CategoryChanged -> _state.update { it.copy(category = event.value) }
+            is ScannerEvent.ExpirationDateChanged -> _state.update { it.copy(expirationDate = event.value, errorMessage = null) }
+            ScannerEvent.IncreaseQuantity -> _state.update { it.copy(quantity = it.quantity + 1) }
+            ScannerEvent.DecreaseQuantity -> _state.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
+            ScannerEvent.ToggleManualMode -> _state.update { it.copy(isManualMode = !it.isManualMode) }
             ScannerEvent.SearchByBarcode -> searchByBarcode()
             ScannerEvent.AddProduct -> addProduct()
-            ScannerEvent.ClearFeedback -> _state.update { it.copy(errorMessage = null, successMessage = null) }
         }
     }
 
@@ -61,8 +59,7 @@ class ScannerViewModel(
                             it.copy(
                                 isLoading = false,
                                 productName = name,
-                                brand = response.product?.brands.orEmpty(),
-                                imageUrl = response.product?.imageUrl
+                                successMessage = "Produit détecté"
                             )
                         }
                     } else {
@@ -92,8 +89,14 @@ class ScannerViewModel(
         }
 
         if (current.productName.isBlank()) {
-            _state.update { it.copy(errorMessage = "Scanne d'abord un produit") }
+            _state.update { it.copy(errorMessage = "Nom du produit obligatoire") }
             return
+        }
+
+        val targetLocation = when (current.category) {
+            "Surgelés" -> Location.FREEZER
+            "Produits laitiers" -> Location.FRIDGE
+            else -> Location.ROOM
         }
 
         viewModelScope.launch {
@@ -102,18 +105,17 @@ class ScannerViewModel(
                     id = System.currentTimeMillis(),
                     name = current.productName,
                     expiredDate = expirationDate,
-                    location = current.selectedLocation
+                    location = targetLocation
                 )
             )
             _state.update {
                 it.copy(
-                    successMessage = "Produit ajouté au stock",
+                    successMessage = "Produit enregistré",
                     errorMessage = null,
                     barcode = "",
                     productName = "",
-                    brand = "",
-                    imageUrl = null,
-                    expirationDate = ""
+                    expirationDate = "",
+                    quantity = 1
                 )
             }
         }
