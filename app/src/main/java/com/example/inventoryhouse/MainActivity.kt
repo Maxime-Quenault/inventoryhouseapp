@@ -65,11 +65,11 @@ import com.example.inventoryhouse.ui.screen.food.FoodScreen
 import com.example.inventoryhouse.ui.screen.home.HomeScreen
 import com.example.inventoryhouse.ui.screen.home.HomeViewModel
 import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
-import com.example.inventoryhouse.ui.screen.profile.ProfileScreen
+import com.example.inventoryhouse.ui.screen.profile.ProfileRoute
 import com.example.inventoryhouse.ui.screen.scanner.ScannerScreen
 import com.example.inventoryhouse.ui.screen.scanner.manualadd.AddProductScreen
 import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
-import com.example.inventoryhouse.ui.screen.stock.StockScreen
+import com.example.inventoryhouse.ui.screen.stock.StockRoute
 import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -200,7 +200,7 @@ fun InventoryHouseApp() {
                                 modifier = Modifier
                             )
 
-                            AppDestinations.STOCK -> StockScreen(
+                            AppDestinations.STOCK -> StockRoute(
                                 repository = productRepository,
                                 modifier = Modifier
                             )
@@ -211,7 +211,10 @@ fun InventoryHouseApp() {
                             )
 
                             AppDestinations.FOOD -> FoodScreen(modifier = Modifier)
-                            AppDestinations.PROFILE -> ProfileScreen(modifier = Modifier)
+                            AppDestinations.PROFILE -> ProfileRoute(
+                                repository = productRepository,
+                                modifier = Modifier
+                            )
                         }
                     }
 
