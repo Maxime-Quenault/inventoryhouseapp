@@ -9,42 +9,85 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.data.model.Product
 import com.example.inventoryhouse.domain.repository.ProductRepository
 
 @Composable
-fun StockScreen(
+fun StockRoute(
     repository: ProductRepository,
     modifier: Modifier = Modifier,
     viewModel: StockViewModel = viewModel(factory = StockViewModel.provideFactory(repository))
 ) {
-    val state by viewModel.state
+    val state by viewModel.state.collectAsState()
+
+    StockScreen(
+        state = state,
+        onEvent = viewModel::onEvent,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun StockScreen(
+    state: StockState,
+    onEvent: (StockEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val locationOptions = listOf<Location?>(null) + Location.entries
 
     LazyColumn(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(state.products) { product ->
+        item {
+            Text(
+                text = "Mon stock",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        }
+
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                locationOptions.forEach { location ->
+                    val isSelected = state.selectedLocation == location
+                    AssistChip(
+                        onClick = { onEvent(StockEvent.SelectLocation(location)) },
+                        label = {
+                            Text(
+                                if (location == null) "Tout" else location.label
+                            )
+                        },
+                        modifier = Modifier,
+                        enabled = !isSelected
+                    )
+                }
+            }
+        }
+
+        items(state.filteredProducts) { product ->
             ProductItem(
                 product = product,
-                onDeleteClick = { viewModel.removeProduct(product) }
+                onDeleteClick = { onEvent(StockEvent.RemoveProduct(product)) }
             )
         }
     }
 }
 
 @Composable
-fun ProductItem(
+private fun ProductItem(
     product: Product,
     onDeleteClick: () -> Unit
-){
+) {
     Column(modifier = Modifier.padding(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -57,7 +100,7 @@ fun ProductItem(
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = product.location.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = product.location.label,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -65,9 +108,7 @@ fun ProductItem(
                 text = product.expiredDate.toString(),
                 style = MaterialTheme.typography.bodyMedium
             )
-            IconButton(
-                onClick = onDeleteClick
-            ) {
+            IconButton(onClick = onDeleteClick) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Supprimer"
@@ -76,3 +117,6 @@ fun ProductItem(
         }
     }
 }
+
+private val Location.label: String
+    get() = name.lowercase().replaceFirstChar { it.uppercase() }
