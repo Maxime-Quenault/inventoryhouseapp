@@ -22,7 +22,8 @@ data class StockItemUi(
     val details: String,
     val category: StockCategory,
     val expirationLabel: String,
-    val expirationTone: ExpirationTone
+    val expirationTone: ExpirationTone,
+    val sourceProduct: Product? = null
 )
 
 data class StockState(
@@ -86,6 +87,7 @@ private fun Product.toUiModel(): StockItemUi {
         details = "Stock • ${category.label}",
         category = category,
         expirationLabel = expirationLabel,
-        expirationTone = expirationTone
+        expirationTone = expirationTone,
+        sourceProduct = this
     )
 }

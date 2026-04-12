@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,7 +61,8 @@ fun StockScreen(
     val categoryOptions = listOf<StockCategory?>(null) + StockCategory.entries
 
     LazyColumn(
-        modifier = modifier.padding(16.dp),
+        modifier = modifier.padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
@@ -104,7 +106,7 @@ fun StockScreen(
             }
         }
 
-        items(state.displayItems) { item ->
+        items(items = state.displayItems, key = { it.id }) { item ->
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
@@ -138,7 +140,10 @@ fun StockScreen(
                         IconButton(onClick = { }) {
                             Icon(Icons.Default.Edit, contentDescription = "Modifier")
                         }
-                        IconButton(onClick = { }) {
+                        IconButton(
+                            onClick = { item.sourceProduct?.let { onEvent(StockEvent.RemoveProduct(it)) } },
+                            enabled = item.sourceProduct != null
+                        ) {
                             Icon(Icons.Default.Delete, contentDescription = "Supprimer")
                         }
                     }
