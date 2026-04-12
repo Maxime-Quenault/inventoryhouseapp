@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.domain.repository.ProductRepository
 
 @Composable
@@ -58,7 +59,7 @@ fun StockScreen(
     onEvent: (StockEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val categoryOptions = listOf<StockCategory?>(null) + StockCategory.entries
+    val categoryOptions = listOf<Location?>(null) + Location.entries
 
     LazyColumn(
         modifier = modifier.padding(horizontal = 16.dp),
@@ -82,7 +83,7 @@ fun StockScreen(
                     val isSelected = category == state.selectedCategory
                     AssistChip(
                         onClick = { onEvent(StockEvent.SelectCategory(category)) },
-                        label = { Text(category?.label ?: "Tous") },
+                        label = { Text(category?.name ?: "Tous") },
                         enabled = !isSelected
                     )
                 }

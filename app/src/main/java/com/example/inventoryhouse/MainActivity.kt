@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
@@ -68,7 +69,6 @@ import com.example.inventoryhouse.ui.screen.home.HomeViewModel
 import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
 import com.example.inventoryhouse.ui.screen.profile.ProfileRoute
 import com.example.inventoryhouse.ui.screen.scanner.ScannerRoute
-import com.example.inventoryhouse.ui.screen.scanner.manualadd.AddProductRoute
 import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.stock.StockRoute
 import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
@@ -179,20 +179,13 @@ fun InventoryHouseApp() {
                 }
             }
 
-            if (showAddProductScreen) {
-                AddProductRoute(
-                    leaveScreen = { showAddProductScreen = false },
-                    onProductAdded = { scope.launch { productRepository.addProduct(it) } },
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else if (showSettingsScreen) {
+             if (showSettingsScreen) {
                 SettingsScreen(modifier = Modifier.fillMaxSize())
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 112.dp)
+                        modifier = Modifier.fillMaxSize().statusBarsPadding()
                     ) { page ->
                         when (AppDestinations.entries[page]) {
                             AppDestinations.HOME -> HomeScreen(

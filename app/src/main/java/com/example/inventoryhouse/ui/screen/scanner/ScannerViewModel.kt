@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.data.model.Product
 import com.example.inventoryhouse.data.remote.api.OpenFoodFactsApi
+import com.example.inventoryhouse.data.remote.dto.OpenFoodFactsProductDto
+import com.example.inventoryhouse.data.remote.dto.OpenFoodFactsProductResponseDto
 import com.example.inventoryhouse.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,56 +29,85 @@ class ScannerViewModel(
 
     fun onEvent(event: ScannerEvent) {
         when (event) {
-            is ScannerEvent.BarcodeChanged -> _state.update {
-                it.copy(barcode = event.barcode.filter(Char::isDigit).take(14), errorMessage = null)
+            is ScannerEvent.BarcodeDetected -> onBarcodeDetected(event.barcode)
+
+            is ScannerEvent.ProductNameChanged -> _state.update {
+                it.copy(productName = event.value, errorMessage = null)
             }
 
-            is ScannerEvent.ProductNameChanged -> _state.update { it.copy(productName = event.value, errorMessage = null) }
-            is ScannerEvent.CategoryChanged -> _state.update { it.copy(category = event.value) }
-            is ScannerEvent.ExpirationDateChanged -> _state.update { it.copy(expirationDate = event.value, errorMessage = null) }
+            is ScannerEvent.LocationChanged -> {
+                _state.update { it.copy(location = event.location) }
+            }
+
+            is ScannerEvent.ExpirationDateChanged -> _state.update {
+                it.copy(expirationDate = event.value, errorMessage = null)
+            }
+
             ScannerEvent.IncreaseQuantity -> _state.update { it.copy(quantity = it.quantity + 1) }
             ScannerEvent.DecreaseQuantity -> _state.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
-            ScannerEvent.ToggleManualMode -> _state.update { it.copy(isManualMode = !it.isManualMode) }
-            ScannerEvent.SearchByBarcode -> searchByBarcode()
+            ScannerEvent.ShowAddForm -> _state.update {
+                it.copy(isAddFormVisible = true, errorMessage = null, successMessage = null)
+            }
+
+            ScannerEvent.HideAddForm -> _state.update {
+                it.copy(isAddFormVisible = false, errorMessage = null, successMessage = null)
+            }
+
+            ScannerEvent.ClearFeedback -> _state.update {
+                it.copy(errorMessage = null, successMessage = null)
+            }
+
             ScannerEvent.AddProduct -> addProduct()
         }
     }
 
-    private fun searchByBarcode() {
-        val barcode = state.value.barcode
-        if (barcode.length < 8) {
-            _state.update { it.copy(errorMessage = "Code-barres invalide") }
-            return
+    private fun onBarcodeDetected(rawBarcode: String) {
+        val barcode = rawBarcode.filter(Char::isDigit).take(14)
+        if (barcode.length < 8) return
+
+        val current = state.value
+        if (current.barcode == barcode && current.hasDetectedBarcode) return
+
+        _state.update {
+            it.copy(
+                barcode = barcode,
+                hasDetectedBarcode = true,
+                isAddFormVisible = true,
+                errorMessage = null,
+                successMessage = "Code-barres détecté : $barcode"
+            )
         }
 
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
-            runCatching { openFoodFactsApi.getProductByBarcode(barcode) }
-                .onSuccess { response ->
-                    val name = response.product?.productName.orEmpty()
-                    if (response.status == 1 && name.isNotBlank()) {
-                        _state.update {
-                            it.copy(
-                                isLoading = false,
-                                productName = name,
-                                successMessage = "Produit détecté"
-                            )
-                        }
-                    } else {
-                        _state.update {
-                            it.copy(
-                                isLoading = false,
-                                errorMessage = "Produit introuvable pour ce code-barres"
-                            )
-                        }
-                    }
-                }
-                .onFailure {
+            try {
+                val resDto: OpenFoodFactsProductDto? =
+                    openFoodFactsApi.getProductByBarcode(barcode).product
+
+                if (resDto == null) {
                     _state.update {
-                        it.copy(isLoading = false, errorMessage = "Impossible de récupérer le produit")
+                        it.copy(errorMessage = "Aucun produit trouvé")
                     }
+                    return@launch
                 }
+
+                _state.update {
+                    it.copy(
+                        productName = resDto.productName.orEmpty(),
+                        quantity = resDto.quantity.orEmpty(),
+                        errorMessage = null,
+                        successMessage = "Produit trouvé : ${resDto.productName.orEmpty()}"
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(errorMessage = "Erreur lors de l'appel API : ${e.message}")
+                }
+            }
         }
+    }
+
+    private fun Int?.orEmpty(): Int {
+        return 0;
     }
 
     private fun addProduct() {
@@ -93,29 +124,29 @@ class ScannerViewModel(
             return
         }
 
-        val targetLocation = when (current.category) {
-            "Surgelés" -> Location.FREEZER
-            "Produits laitiers" -> Location.FRIDGE
-            else -> Location.ROOM
-        }
-
         viewModelScope.launch {
             productRepository.addProduct(
                 Product(
                     id = System.currentTimeMillis(),
                     name = current.productName,
                     expiredDate = expirationDate,
-                    location = targetLocation
+                    location = current.location,
+                    imageUrl = current.imageUrl,
+                    quantity = current.quantity,
+                    quantityUnit = current.quantityUnit
                 )
             )
+
             _state.update {
                 it.copy(
-                    successMessage = "Produit enregistré",
-                    errorMessage = null,
                     barcode = "",
                     productName = "",
                     expirationDate = "",
-                    quantity = 1
+                    quantity = 1,
+                    hasDetectedBarcode = false,
+                    isAddFormVisible = false,
+                    errorMessage = null,
+                    successMessage = "Produit enregistré"
                 )
             }
         }

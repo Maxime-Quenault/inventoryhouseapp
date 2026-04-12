@@ -12,5 +12,8 @@ data class Product(
     val id: Long,
     val name: String,
     val expiredDate: LocalDate,
-    val location: Location
+    val location: Location,
+    val imageUrl: String,
+    val quantity: Int,
+    val quantityUnit: String
 )
