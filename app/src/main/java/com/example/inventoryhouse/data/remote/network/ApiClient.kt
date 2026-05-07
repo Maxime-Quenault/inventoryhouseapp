@@ -39,7 +39,7 @@ object ApiClient {
 
     private fun appRetrofit(sessionStore: SessionStore? = null): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:3000/")
+            .baseUrl("https://inventoryhouseback.vercel.app/")
             .client(client(sessionStore))
             .addConverterFactory(GsonConverterFactory.create())
             .build()
