@@ -1,22 +1,30 @@
 package com.example.inventoryhouse.ui.screen.auth
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.inventoryhouse.ui.theme.GreenBtn
-import com.example.inventoryhouse.ui.theme.SoftBlack
+import com.example.inventoryhouse.ui.component.IconBubble
+import com.example.inventoryhouse.ui.component.ModernCard
+import com.example.inventoryhouse.ui.component.PrimaryActionButton
 
 @Composable
 fun AuthHeroCard(
@@ -24,44 +32,72 @@ fun AuthHeroCard(
     subtitle: String,
     modifier: Modifier = Modifier
 ) {
-    val bg = GreenBtn.copy(alpha = 0.14f)
-
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
+        ModernCard(
             modifier = Modifier
-                .fillMaxWidth(0.86f)
-                .aspectRatio(1.25f)
-                .clip(RoundedCornerShape(22.dp))
-                .background(bg),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .heightIn(min = 184.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                tonalElevation = 2.dp
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = "FoodyStock",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = SoftBlack
+                        text = "InventoryHouse",
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.ExtraBold
                     )
                 }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    IconBubble(
+                        icon = Icons.Outlined.Inventory2,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    IconBubble(
+                        icon = Icons.Outlined.Kitchen,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                    IconBubble(
+                        icon = Icons.Outlined.Groups,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    IconBubble(
+                        icon = Icons.Outlined.Eco,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Text(
+                    text = "Un stock partagé, lisible et toujours à jour.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
-            color = SoftBlack,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
             minLines = 2,
             maxLines = 2
@@ -87,24 +123,10 @@ fun PrimaryGreenButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = onClick,
+    PrimaryActionButton(
+        text = text,
         enabled = enabled,
+        onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .height(52.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = GreenBtn,
-            contentColor = SoftBlack,
-            disabledContainerColor = GreenBtn.copy(alpha = 0.45f),
-            disabledContentColor = SoftBlack.copy(alpha = 0.45f)
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 6.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Text(text)
-    }
+    )
 }

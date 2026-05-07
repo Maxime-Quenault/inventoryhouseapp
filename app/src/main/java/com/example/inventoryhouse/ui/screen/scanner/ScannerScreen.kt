@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,19 +29,21 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,13 +68,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.data.remote.network.ApiClient
 import com.example.inventoryhouse.domain.repository.ProductRepository
+import com.example.inventoryhouse.ui.component.FeedbackMessage
+import com.example.inventoryhouse.ui.component.IconBubble
+import com.example.inventoryhouse.ui.component.InventoryBackground
+import com.example.inventoryhouse.ui.component.ModernCard
+import com.example.inventoryhouse.ui.component.PrimaryActionButton
+import com.example.inventoryhouse.ui.component.SectionHeader
+import com.example.inventoryhouse.ui.component.StatusPill
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
 import java.time.Instant
 import java.time.ZoneId
@@ -108,45 +117,41 @@ fun ScannerScreen(
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 16.dp,
-            bottom = contentPadding.calculateBottomPadding() + 96.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            ScannerCameraHeader(
-                onBarcodeDetected = { onEvent(ScannerEvent.BarcodeDetected(it)) }
-            )
-        }
+    InventoryBackground(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = contentPadding.calculateBottomPadding() + 126.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                ScannerHeader()
+            }
 
-        item {
-            if (state.isAddFormVisible) {
-                AddProductCard(
-                    state = state,
-                    onEvent = onEvent,
-                    onOpenDatePicker = { showDatePicker = true }
+            item {
+                ScannerCameraHeader(
+                    onBarcodeDetected = { onEvent(ScannerEvent.BarcodeDetected(it)) }
                 )
-            } else {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text("Scanne un produit pour afficher le formulaire d'ajout.")
-                        Button(
-                            onClick = { onEvent(ScannerEvent.ShowAddForm) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Ajouter un produit manuellement")
+            }
+
+            item {
+                if (state.isAddFormVisible) {
+                    AddProductCard(
+                        state = state,
+                        onEvent = onEvent,
+                        onOpenDatePicker = { showDatePicker = true }
+                    )
+                } else {
+                    ManualAddCard(
+                        onShowForm = {
+                            onAddProductClick()
+                            onEvent(ScannerEvent.ShowAddForm)
                         }
-                    }
+                    )
                 }
             }
         }
@@ -164,34 +169,93 @@ fun ScannerScreen(
 }
 
 @Composable
+private fun ScannerHeader() {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "Ajouter",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = "Scannez un code-barres ou saisissez un produit manuellement.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ManualAddCard(onShowForm: () -> Unit) {
+    ModernCard(containerColor = MaterialTheme.colorScheme.surface) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconBubble(
+                icon = Icons.Outlined.Inventory2,
+                tint = MaterialTheme.colorScheme.secondary,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Ajout manuel", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Pratique pour les produits sans code-barres ou mal reconnus.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            PrimaryActionButton(
+                text = "Ajouter manuellement",
+                enabled = true,
+                icon = Icons.Default.Add,
+                onClick = onShowForm
+            )
+        }
+    }
+}
+
+@Composable
 private fun AddProductCard(
     state: ScannerState,
     onEvent: (ScannerEvent) -> Unit,
     onOpenDatePicker: () -> Unit
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+    ModernCard(containerColor = MaterialTheme.colorScheme.surface) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SectionHeader(
+                    title = "Produit",
+                    modifier = Modifier.weight(1f)
+                )
+                if (state.hasDetectedBarcode) {
+                    StatusPill(
+                        text = "Scan détecté",
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = state.barcode,
                 onValueChange = {},
                 label = { Text("Code-barres") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                readOnly = true
+                readOnly = true,
+                shape = RoundedCornerShape(14.dp)
             )
 
             OutlinedTextField(
                 value = state.productName,
                 onValueChange = { onEvent(ScannerEvent.ProductNameChanged(it)) },
                 label = { Text("Nom du produit") },
-                placeholder = { Text("ex: Lait d'avoine") },
+                placeholder = { Text("ex : Lait d'avoine") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                enabled = !state.isLoading
             )
 
             LocationDropdown(
@@ -200,22 +264,11 @@ private fun AddProductCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Quantité", fontWeight = FontWeight.Bold)
-
-                IconButton(onClick = { onEvent(ScannerEvent.DecreaseQuantity) }) {
-                    Icon(Icons.Default.Remove, contentDescription = "Réduire")
-                }
-
-                Text(state.quantity.toString())
-
-                IconButton(onClick = { onEvent(ScannerEvent.IncreaseQuantity) }) {
-                    Icon(Icons.Default.Add, contentDescription = "Augmenter")
-                }
-            }
+            QuantitySelector(
+                quantity = state.quantity,
+                onDecrease = { onEvent(ScannerEvent.DecreaseQuantity) },
+                onIncrease = { onEvent(ScannerEvent.IncreaseQuantity) }
+            )
 
             OutlinedTextField(
                 value = state.expirationDate,
@@ -231,31 +284,82 @@ private fun AddProductCard(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                enabled = !state.isLoading
             )
 
-            Button(
-                onClick = { onEvent(ScannerEvent.AddProduct) },
+            PrimaryActionButton(
+                text = "Enregistrer le produit",
                 enabled = state.canAdd,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null)
-                Text(" Enregistrer le produit")
-            }
+                isLoading = state.isLoading,
+                icon = Icons.Default.CameraAlt,
+                onClick = { onEvent(ScannerEvent.AddProduct) }
+            )
 
             TextButton(
                 onClick = { onEvent(ScannerEvent.HideAddForm) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isLoading
             ) {
                 Text("Masquer le formulaire")
             }
 
             state.errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
+                FeedbackMessage(text = it, isError = true)
             }
 
             state.successMessage?.let {
-                Text(it, color = Color(0xFF22B627))
+                FeedbackMessage(text = it, isError = false)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuantitySelector(
+    quantity: Int,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    ModernCard(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.64f),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Quantité", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Nombre d'unités à stocker",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onDecrease) {
+                    Icon(Icons.Default.Remove, contentDescription = "Réduire")
+                }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Text(
+                        text = quantity.toString(),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+                IconButton(onClick = onIncrease) {
+                    Icon(Icons.Default.Add, contentDescription = "Augmenter")
+                }
             }
         }
     }
@@ -319,33 +423,64 @@ private fun ScannerCameraHeader(
         permissionGranted = isGrantedNow
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(280.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF1F2A2E)),
-        contentAlignment = Alignment.Center
+    ModernCard(
+        containerColor = Color(0xFF101817),
+        contentPadding = PaddingValues(0.dp)
     ) {
-        if (permissionGranted) {
-            BarcodeCameraPreview(
-                modifier = Modifier.fillMaxSize(),
-                onBarcodeDetected = onBarcodeDetected
-            )
-        } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    "Autorise l'accès à la caméra pour scanner un produit",
-                    color = Color.White
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(292.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF101817)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (permissionGranted) {
+                BarcodeCameraPreview(
+                    modifier = Modifier.fillMaxSize(),
+                    onBarcodeDetected = onBarcodeDetected
                 )
-                Button(onClick = requestPermission) {
-                    Text("Activer la caméra")
+                ScannerFrame()
+            } else {
+                Column(
+                    modifier = Modifier.padding(22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    IconBubble(
+                        icon = Icons.Outlined.QrCodeScanner,
+                        tint = MaterialTheme.colorScheme.primary,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                    Text(
+                        "Autorisez la caméra pour scanner un produit.",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Button(onClick = requestPermission) {
+                        Text("Activer la caméra")
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScannerFrame() {
+    Box(
+        modifier = Modifier
+            .size(width = 220.dp, height = 132.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.White.copy(alpha = 0.12f))
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .align(Alignment.Center),
+            color = MaterialTheme.colorScheme.primary
+        ) {}
     }
 }
 
@@ -448,17 +583,18 @@ fun LocationDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = selectedLocation?.name?.replace("_", " ") ?: "",
+            value = selectedLocation?.displayLabel.orEmpty(),
             onValueChange = {},
             readOnly = true,
-            label = { Text("Location") },
+            label = { Text("Emplacement") },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                 .fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp)
         )
 
         ExposedDropdownMenu(
@@ -467,7 +603,7 @@ fun LocationDropdown(
         ) {
             locations.forEach { location ->
                 DropdownMenuItem(
-                    text = { Text(location.name.replace("_", " ")) },
+                    text = { Text(location.displayLabel) },
                     onClick = {
                         onLocationSelected(location)
                         expanded = false
@@ -478,6 +614,13 @@ fun LocationDropdown(
     }
 }
 
+private val Location.displayLabel: String
+    get() = when (this) {
+        Location.FRESH -> "Frais"
+        Location.DRY -> "Placard"
+        Location.FROZEN -> "Congelé"
+    }
+
 private fun imageProxySafeClose(previewView: PreviewView) {
-    // no-op helper pour garder un catch explicite sans laisser de TODO
+    // Keeps the camera binding catch explicit while avoiding a noisy crash path.
 }

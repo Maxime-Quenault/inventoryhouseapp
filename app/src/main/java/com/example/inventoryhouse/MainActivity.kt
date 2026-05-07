@@ -5,10 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inventoryhouse.data.local.session.SessionStore
@@ -66,6 +70,7 @@ import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
 import com.example.inventoryhouse.ui.screen.scanner.ScannerRoute
 import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.stock.StockRoute
+import com.example.inventoryhouse.ui.component.InventoryBackground
 import com.example.inventoryhouse.ui.theme.InventoryHouseTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -268,8 +273,18 @@ private fun MainContent(
 
 @Composable
 private fun LoadingScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    InventoryBackground {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                Text(
+                    text = "Chargement...",
+                    modifier = Modifier.padding(top = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -288,14 +303,14 @@ private fun FloatingBottomBar(
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(34.dp),
-            color = Color(0xFFF0FAF0),
-            shadowElevation = 8.dp,
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 10.dp,
             tonalElevation = 2.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 440.dp)
-                .heightIn(min = 78.dp)
+                .heightIn(min = 76.dp)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
@@ -303,29 +318,46 @@ private fun FloatingBottomBar(
             ) {
                 destinations.forEachIndexed { index, destination ->
                     val selected = selectedIndex == index
-                    val containerColor = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        Color(0xFFDFF5E3)
-                    }
-                    val contentColor = if (selected) Color.White else Color(0xFF1D7F35)
+                    val containerColor by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            Color.Transparent
+                        },
+                        label = "bottom-bar-item-container"
+                    )
+                    val contentColor by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        label = "bottom-bar-item-content"
+                    )
 
-                    Row(
+                    Column(
                         modifier = Modifier
                             .weight(1f)
-                            .height(58.dp)
-                            .clip(CircleShape)
+                            .height(60.dp)
+                            .clip(RoundedCornerShape(22.dp))
                             .background(containerColor)
                             .clickable { onItemClick(index) }
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
                             imageVector = destination.icon,
                             contentDescription = destination.label,
                             tint = contentColor,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(21.dp)
+                        )
+                        Text(
+                            text = destination.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = contentColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

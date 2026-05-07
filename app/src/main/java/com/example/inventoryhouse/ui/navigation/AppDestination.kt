@@ -12,7 +12,7 @@ enum class AppDestinations(
     val icon: ImageVector
 ) {
     HOME(
-        label = "Home",
+        label = "Accueil",
         icon = Icons.Default.Home
     ),
     STOCK(
@@ -20,7 +20,7 @@ enum class AppDestinations(
         icon = Icons.AutoMirrored.Filled.FormatListBulleted
     ),
     ADD_PRODUCT(
-        label = "Ajout de produit",
+        label = "Scanner",
         icon = Icons.Default.QrCodeScanner
     ),
     PROFILE(

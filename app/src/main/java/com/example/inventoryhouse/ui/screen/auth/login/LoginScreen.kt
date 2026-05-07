@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,25 +24,27 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.inventoryhouse.R
+import com.example.inventoryhouse.ui.component.FeedbackMessage
+import com.example.inventoryhouse.ui.component.InventoryBackground
+import com.example.inventoryhouse.ui.component.ModernCard
+import com.example.inventoryhouse.ui.component.PrimaryActionButton
 import com.example.inventoryhouse.ui.screen.auth.AuthHeroCard
-import com.example.inventoryhouse.ui.screen.auth.PrimaryGreenButton
-import com.example.inventoryhouse.ui.theme.SoftBlack
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -64,135 +67,157 @@ fun LoginScreen(
             val account = task.getResult(ApiException::class.java)
             val idToken = account.idToken
             if (idToken.isNullOrBlank()) {
-                onEvent(LoginEvent.GoogleSignInFailed("Jeton Google absent. Verifiez le client id web."))
+                onEvent(LoginEvent.GoogleSignInFailed("Jeton Google absent. Vérifiez le client id web."))
             } else {
                 onEvent(LoginEvent.GoogleTokenReceived(idToken))
             }
         } catch (e: ApiException) {
-            onEvent(LoginEvent.GoogleSignInFailed("Connexion Google annulee ou refusee (${e.statusCode})."))
+            onEvent(LoginEvent.GoogleSignInFailed("Connexion Google annulée ou refusée (${e.statusCode})."))
         }
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Connexion") },
-                navigationIcon = {
-                    if (onBack != null) {
+            if (onBack != null) {
+                CenterAlignedTopAppBar(
+                    title = { Text("Connexion") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    ),
+                    navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        }
+                    }
+                )
+            }
+        }
+    ) { padding ->
+        InventoryBackground(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            ) {
+                AuthHeroCard(
+                    title = "Ravi de vous revoir",
+                    subtitle = "Connectez-vous pour retrouver votre stock, vos membres et vos listes."
+                )
+
+                Spacer(Modifier.height(22.dp))
+
+                ModernCard {
+                    Column {
+                        OutlinedTextField(
+                            value = state.email,
+                            onValueChange = { onEvent(LoginEvent.EmailChanged(it.trim())) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            singleLine = true,
+                            label = { Text("Email") },
+                            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            enabled = !state.isLoading
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = state.password,
+                            onValueChange = { onEvent(LoginEvent.PasswordChanged(it)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            singleLine = true,
+                            label = { Text("Mot de passe") },
+                            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { onEvent(LoginEvent.TogglePasswordVisibility) },
+                                    enabled = !state.isLoading
+                                ) {
+                                    Icon(
+                                        imageVector = if (state.showPassword) {
+                                            Icons.Filled.VisibilityOff
+                                        } else {
+                                            Icons.Filled.Visibility
+                                        },
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (state.showPassword) {
+                                VisualTransformation.None
+                            } else {
+                                PasswordVisualTransformation()
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            enabled = !state.isLoading
+                        )
+
+                        if (!state.errorMessage.isNullOrBlank()) {
+                            Spacer(Modifier.height(12.dp))
+                            FeedbackMessage(text = state.errorMessage, isError = true)
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        PrimaryActionButton(
+                            text = "Se connecter",
+                            enabled = state.canSubmit,
+                            isLoading = state.isLoading,
+                            onClick = { onEvent(LoginEvent.Submit) }
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                if (googleServerClientId.isBlank()) {
+                                    onEvent(
+                                        LoginEvent.GoogleSignInFailed(
+                                            "GOOGLE_WEB_CLIENT_ID manquant dans gradle.properties."
+                                        )
+                                    )
+                                    return@OutlinedButton
+                                }
+
+                                val signInOptions = GoogleSignInOptions
+                                    .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                    .requestIdToken(googleServerClientId)
+                                    .requestEmail()
+                                    .build()
+                                googleLauncher.launch(
+                                    GoogleSignIn.getClient(context, signInOptions).signInIntent
+                                )
+                            },
+                            enabled = !state.isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Filled.AccountCircle, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("Continuer avec Google")
                         }
                     }
                 }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(horizontal = 20.dp)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            Spacer(Modifier.height(14.dp))
 
-            AuthHeroCard(
-                title = "Ravi de vous revoir",
-                subtitle = "Connectez-vous pour retrouver votre stock et votre maison."
-            )
+                TextButton(
+                    onClick = onGoToRegister,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isLoading
+                ) {
+                    Text("Créer un compte")
+                }
 
-            Spacer(Modifier.height(22.dp))
-
-            OutlinedTextField(
-                value = state.email,
-                onValueChange = { onEvent(LoginEvent.EmailChanged(it)) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                singleLine = true,
-                label = { Text("Email") },
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = { onEvent(LoginEvent.PasswordChanged(it)) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                singleLine = true,
-                label = { Text("Mot de passe") },
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { onEvent(LoginEvent.TogglePasswordVisibility) }) {
-                        Icon(
-                            imageVector = if (state.showPassword) {
-                                Icons.Filled.VisibilityOff
-                            } else {
-                                Icons.Filled.Visibility
-                            },
-                            contentDescription = null
-                        )
-                    }
-                },
-                visualTransformation = if (state.showPassword) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            if (!state.errorMessage.isNullOrBlank()) {
-                Text(
-                    text = state.errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            PrimaryGreenButton(
-                text = if (state.isLoading) "Connexion..." else "Se connecter",
-                enabled = state.canSubmit,
-                onClick = { onEvent(LoginEvent.Submit) }
-            )
-
-            OutlinedButton(
-                onClick = {
-                    if (googleServerClientId.isBlank()) {
-                        onEvent(
-                            LoginEvent.GoogleSignInFailed(
-                                "GOOGLE_WEB_CLIENT_ID manquant dans gradle.properties."
-                            )
-                        )
-                        return@OutlinedButton
-                    }
-
-                    val signInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                        .requestIdToken(googleServerClientId)
-                        .requestEmail()
-                        .build()
-                    googleLauncher.launch(GoogleSignIn.getClient(context, signInOptions).signInIntent)
-                },
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.AccountCircle, contentDescription = null)
-                Text(" Continuer avec Google")
-            }
-
-            TextButton(
-                onClick = onGoToRegister,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Creer un compte", color = SoftBlack)
-            }
-
-            if (state.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(24.dp))
             }
         }
     }

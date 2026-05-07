@@ -1,7 +1,7 @@
 package com.example.inventoryhouse.data.enums
 
-enum class Location(string: String) {
+enum class Location(val label: String) {
     FRESH("Frais"),
-    DRY("Sec"),
+    DRY("Placard"),
     FROZEN("Congelé")
 }

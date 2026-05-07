@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.domain.repository.ProductRepository
 
 @Composable
@@ -87,6 +86,3 @@ fun ProfileScreen(
         }
     }
 }
-
-private val Location.label: String
-    get() = name.lowercase().replaceFirstChar { it.uppercase() }
