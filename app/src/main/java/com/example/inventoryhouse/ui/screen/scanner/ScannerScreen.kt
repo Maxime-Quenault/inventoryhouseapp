@@ -81,8 +81,10 @@ import java.util.concurrent.Executors
 fun ScannerRoute(
     repository: ProductRepository,
     onAddProductClick: () -> Unit = {},
+    viewModelKey: String? = null,
     modifier: Modifier = Modifier,
     viewModel: ScannerViewModel = viewModel(
+        key = viewModelKey,
         factory = ScannerViewModel.provideFactory(ApiClient.openFoodFactsApi, repository)
     )
 ) {

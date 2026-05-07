@@ -4,9 +4,9 @@ import com.example.inventoryhouse.data.local.session.SessionStore
 import com.example.inventoryhouse.data.remote.api.AuthApi
 import com.example.inventoryhouse.data.remote.dto.AuthResponseDto
 import com.example.inventoryhouse.data.remote.dto.ErrorResponseDto
+import com.example.inventoryhouse.data.remote.dto.GoogleLoginRequestDto
 import com.example.inventoryhouse.data.remote.dto.LoginRequestDto
 import com.example.inventoryhouse.data.remote.dto.RegisterRequestDto
-import com.example.inventoryhouse.data.remote.dto.UserDto
 import com.example.inventoryhouse.domain.repository.AuthRepository
 import com.google.gson.Gson
 import retrofit2.Response
@@ -38,6 +38,30 @@ class RemoteAuthRepository(
         throw Exception(errorMsg)
     }
 
+    override suspend fun loginWithGoogle(idToken: String): AuthResponseDto {
+        val resp = api.loginWithGoogle(GoogleLoginRequestDto(idToken = idToken))
+
+        if (resp.isSuccessful) {
+            val body = resp.body() ?: throw Exception("Reponse vide du serveur")
+            sessionStore.saveToken(body.token)
+            return body
+        }
+
+        val errorMsg = try {
+            val errJson = resp.errorBody()?.string()
+            if (errJson.isNullOrBlank()) {
+                "Erreur de connexion Google"
+            } else {
+                gson.fromJson(errJson, ErrorResponseDto::class.java).error
+                    ?: "Erreur de connexion Google"
+            }
+        } catch (_: Exception) {
+            "Erreur de connexion Google (${resp.code()})"
+        }
+
+        throw Exception(errorMsg)
+    }
+
     override suspend fun logout() {
         sessionStore.clearToken()
     }
@@ -51,10 +75,9 @@ class RemoteAuthRepository(
 
         val resp = api.register(
             RegisterRequestDto(
-                email = email,
-                password = password,
                 name = name,
-                confirmPassword = confirmPassword
+                email = email,
+                password = password
             )
         )
 

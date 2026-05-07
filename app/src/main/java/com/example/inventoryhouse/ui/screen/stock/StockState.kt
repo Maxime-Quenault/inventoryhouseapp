@@ -24,17 +24,13 @@ data class StockItemUi(
 data class StockState(
     val products: List<Product> = emptyList(),
     val searchQuery: String = "",
-    val selectedCategory: Location? = null
+    val selectedCategory: Location? = null,
+    val errorMessage: String? = null
 ) {
-    /**
-     * Point d'entrée unique pour afficher les aliments.
-     * On peut remplacer [sampleRawItems] plus tard par une API sans toucher l'UI.
-     */
     val displayItems: List<StockItemUi>
         get() {
-            val mappedProducts = products.map { it.toUiModel() }
-            val baseItems = if (mappedProducts.isEmpty()) sampleRawItems else mappedProducts
-            return baseItems
+            return products
+                .map { it.toUiModel() }
                 .filter { item ->
                     selectedCategory == null || item.category == selectedCategory
                 }
@@ -42,15 +38,6 @@ data class StockState(
                     searchQuery.isBlank() || item.name.contains(searchQuery, ignoreCase = true)
                 }
         }
-
-    companion object {
-        val sampleRawItems = listOf(
-            StockItemUi(1, "Yaourt Nature", "4 unités • Frais", Location.FRESH, "EXPIRE DANS 2 JOURS", ExpirationTone.DANGER),
-            StockItemUi(2, "Pâtes Penne", "500g • Sec", Location.DRY, "EXPIRE EN 2025", ExpirationTone.SAFE),
-            StockItemUi(3, "Lait Entier", "1L • Frais", Location.FRESH, "EXPIRE DANS 5 JOURS", ExpirationTone.WARNING),
-            StockItemUi(4, "Petits Pois", "1kg • Congelé", Location.FROZEN, "EXPIRÉ LE 12/05", ExpirationTone.DANGER)
-        )
-    }
 }
 
 private fun Product.toUiModel(): StockItemUi {
@@ -64,7 +51,7 @@ private fun Product.toUiModel(): StockItemUi {
     }
 
     val expirationLabel = when {
-        daysToExpire < 0 -> "EXPIRÉ"
+        daysToExpire < 0 -> "EXPIRE"
         daysToExpire == 0 -> "EXPIRE AUJOURD'HUI"
         daysToExpire <= 7 -> "EXPIRE DANS $daysToExpire JOURS"
         else -> "EXPIRE LE ${expiredDate}".replace('-', '/')
@@ -73,7 +60,7 @@ private fun Product.toUiModel(): StockItemUi {
     return StockItemUi(
         id = id,
         name = name,
-        details = "Stock • ${location.name}",
+        details = "${quantity} ${quantityUnit} - ${location.name}",
         category = location,
         expirationLabel = expirationLabel,
         expirationTone = expirationTone,

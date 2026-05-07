@@ -10,7 +10,7 @@ data class RegisterState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 ) {
-    val passwordOk: Boolean get() = password.length >= 6
+    val passwordOk: Boolean get() = password.length >= 8
     val matchOk: Boolean get() = confirmPassword.isNotBlank() && password == confirmPassword
 
     val canSubmit: Boolean

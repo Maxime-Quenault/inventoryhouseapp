@@ -5,11 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.inventoryhouse.data.enums.Location
 import com.example.inventoryhouse.data.model.Product
 import com.example.inventoryhouse.data.remote.api.OpenFoodFactsApi
 import com.example.inventoryhouse.data.remote.dto.OpenFoodFactsProductDto
-import com.example.inventoryhouse.data.remote.dto.OpenFoodFactsProductResponseDto
 import com.example.inventoryhouse.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,33 +28,26 @@ class ScannerViewModel(
     fun onEvent(event: ScannerEvent) {
         when (event) {
             is ScannerEvent.BarcodeDetected -> onBarcodeDetected(event.barcode)
-
             is ScannerEvent.ProductNameChanged -> _state.update {
                 it.copy(productName = event.value, errorMessage = null)
             }
-
-            is ScannerEvent.LocationChanged -> {
-                _state.update { it.copy(location = event.location) }
-            }
-
+            is ScannerEvent.LocationChanged -> _state.update { it.copy(location = event.location) }
             is ScannerEvent.ExpirationDateChanged -> _state.update {
                 it.copy(expirationDate = event.value, errorMessage = null)
             }
-
             ScannerEvent.IncreaseQuantity -> _state.update { it.copy(quantity = it.quantity + 1) }
-            ScannerEvent.DecreaseQuantity -> _state.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
+            ScannerEvent.DecreaseQuantity -> _state.update {
+                it.copy(quantity = (it.quantity - 1).coerceAtLeast(1))
+            }
             ScannerEvent.ShowAddForm -> _state.update {
                 it.copy(isAddFormVisible = true, errorMessage = null, successMessage = null)
             }
-
             ScannerEvent.HideAddForm -> _state.update {
                 it.copy(isAddFormVisible = false, errorMessage = null, successMessage = null)
             }
-
             ScannerEvent.ClearFeedback -> _state.update {
                 it.copy(errorMessage = null, successMessage = null)
             }
-
             ScannerEvent.AddProduct -> addProduct()
         }
     }
@@ -73,8 +64,9 @@ class ScannerViewModel(
                 barcode = barcode,
                 hasDetectedBarcode = true,
                 isAddFormVisible = true,
+                isLoading = true,
                 errorMessage = null,
-                successMessage = "Code-barres détecté : $barcode"
+                successMessage = "Code-barres detecte : $barcode"
             )
         }
 
@@ -85,29 +77,31 @@ class ScannerViewModel(
 
                 if (resDto == null) {
                     _state.update {
-                        it.copy(errorMessage = "Aucun produit trouvé")
+                        it.copy(isLoading = false, errorMessage = "Aucun produit trouve")
                     }
                     return@launch
                 }
 
                 _state.update {
                     it.copy(
+                        isLoading = false,
                         productName = resDto.productName.orEmpty(),
-                        quantity = resDto.quantity.orEmpty(),
+                        quantity = resDto.quantity ?: 1,
+                        quantityUnit = resDto.quantityUnit.orEmpty().ifBlank { "piece" },
+                        imageUrl = resDto.imageUrl.orEmpty(),
                         errorMessage = null,
-                        successMessage = "Produit trouvé : ${resDto.productName.orEmpty()}"
+                        successMessage = "Produit trouve : ${resDto.productName.orEmpty()}"
                     )
                 }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(errorMessage = "Erreur lors de l'appel API : ${e.message}")
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Erreur OpenFoodFacts : ${e.message}"
+                    )
                 }
             }
         }
-    }
-
-    private fun Int?.orEmpty(): Int {
-        return 0;
     }
 
     private fun addProduct() {
@@ -125,29 +119,42 @@ class ScannerViewModel(
         }
 
         viewModelScope.launch {
-            productRepository.addProduct(
-                Product(
-                    id = System.currentTimeMillis(),
-                    name = current.productName,
-                    expiredDate = expirationDate,
-                    location = current.location,
-                    imageUrl = current.imageUrl,
-                    quantity = current.quantity,
-                    quantityUnit = current.quantityUnit
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                productRepository.addProduct(
+                    Product(
+                        id = System.currentTimeMillis(),
+                        name = current.productName,
+                        expiredDate = expirationDate,
+                        location = current.location,
+                        imageUrl = current.imageUrl,
+                        quantity = current.quantity.coerceAtLeast(1),
+                        quantityUnit = current.quantityUnit.ifBlank { "piece" }
+                    )
                 )
-            )
 
-            _state.update {
-                it.copy(
-                    barcode = "",
-                    productName = "",
-                    expirationDate = "",
-                    quantity = 1,
-                    hasDetectedBarcode = false,
-                    isAddFormVisible = false,
-                    errorMessage = null,
-                    successMessage = "Produit enregistré"
-                )
+                _state.update {
+                    it.copy(
+                        barcode = "",
+                        productName = "",
+                        expirationDate = "",
+                        quantity = 1,
+                        quantityUnit = "piece",
+                        imageUrl = "",
+                        hasDetectedBarcode = false,
+                        isAddFormVisible = false,
+                        isLoading = false,
+                        errorMessage = null,
+                        successMessage = "Produit enregistre"
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Impossible d'enregistrer le produit"
+                    )
+                }
             }
         }
     }

@@ -18,6 +18,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        resValue(
+            "string",
+            "google_server_client_id",
+            providers.gradleProperty("GOOGLE_WEB_CLIENT_ID").orElse("").get()
+        )
     }
 
     buildTypes {
@@ -35,6 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
+        resValues = true
     }
 }
 
@@ -50,6 +56,7 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.play.services.mlkit.barcode.scanning)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.material3)
     testImplementation(libs.junit)

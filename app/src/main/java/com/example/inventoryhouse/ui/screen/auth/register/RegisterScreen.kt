@@ -114,7 +114,7 @@ fun RegisterScreen(
                     PasswordVisualTransformation()
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                supportingText = { Text("6 caractères minimum") },
+                supportingText = { Text("8 caracteres minimum") },
                 enabled = !state.isLoading
             )
 

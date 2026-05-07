@@ -5,6 +5,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import com.example.inventoryhouse.data.remote.dto.RegisterRequestDto
 import com.example.inventoryhouse.data.remote.dto.AuthResponseDto
+import com.example.inventoryhouse.data.remote.dto.GoogleLoginRequestDto
 import com.example.inventoryhouse.data.remote.dto.LoginRequestDto
 
 interface AuthApi {
@@ -17,5 +18,10 @@ interface AuthApi {
     @POST("api/auth/login")
     suspend fun login(
         @Body loginRequestDto: LoginRequestDto
+    ): Response<AuthResponseDto>
+
+    @POST("api/auth/google")
+    suspend fun loginWithGoogle(
+        @Body googleLoginRequestDto: GoogleLoginRequestDto
     ): Response<AuthResponseDto>
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,15 +19,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,17 +42,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.Room
-import com.example.inventoryhouse.data.AppDatabase
 import com.example.inventoryhouse.data.local.session.SessionStore
 import com.example.inventoryhouse.data.remote.network.ApiClient
-import com.example.inventoryhouse.data.repository.HomeRepositoryImpl
-import com.example.inventoryhouse.data.repository.InMemoryProductRepository
+import com.example.inventoryhouse.data.repository.InventoryRepository
 import com.example.inventoryhouse.data.repository.OnboardingRepositoryImpl
 import com.example.inventoryhouse.data.repository.RemoteAuthRepository
+import com.example.inventoryhouse.data.repository.RemoteProductRepository
 import com.example.inventoryhouse.ui.navigation.AppDestinations
 import com.example.inventoryhouse.ui.navigation.RootDestination
 import com.example.inventoryhouse.ui.screen.auth.login.LoginScreen
@@ -63,11 +58,11 @@ import com.example.inventoryhouse.ui.screen.auth.login.LoginViewModelFactory
 import com.example.inventoryhouse.ui.screen.auth.register.RegisterScreen
 import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModel
 import com.example.inventoryhouse.ui.screen.auth.register.RegisterViewModelFactory
-import com.example.inventoryhouse.ui.screen.food.FoodScreen
-import com.example.inventoryhouse.ui.screen.home.HomeScreen
-import com.example.inventoryhouse.ui.screen.home.HomeViewModel
+import com.example.inventoryhouse.ui.screen.dashboard.DashboardRoute
+import com.example.inventoryhouse.ui.screen.house.HouseScreen
+import com.example.inventoryhouse.ui.screen.house.HouseSetupScreen
+import com.example.inventoryhouse.ui.screen.house.HouseViewModel
 import com.example.inventoryhouse.ui.screen.onboarding.OnboardingScreen
-import com.example.inventoryhouse.ui.screen.profile.ProfileRoute
 import com.example.inventoryhouse.ui.screen.scanner.ScannerRoute
 import com.example.inventoryhouse.ui.screen.settings.SettingsScreen
 import com.example.inventoryhouse.ui.screen.stock.StockRoute
@@ -87,6 +82,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private data class SessionSnapshot(val token: String?)
+
 @Composable
 fun InventoryHouseApp() {
     val appContext = LocalContext.current.applicationContext
@@ -98,30 +95,34 @@ fun InventoryHouseApp() {
     }
 
     val sessionStore = remember { SessionStore(appContext) }
-    val authRepository = remember { RemoteAuthRepository(ApiClient.authApi, sessionStore) }
+    val sessionSnapshot = produceState<SessionSnapshot?>(initialValue = null) {
+        value = SessionSnapshot(sessionStore.tokenFlow.first())
+    }
 
+    val authRepository = remember { RemoteAuthRepository(ApiClient.authApi, sessionStore) }
     val loginVm: LoginViewModel = viewModel(factory = LoginViewModelFactory(authRepository))
     val loginState by loginVm.state.collectAsState()
-
     val registerVm: RegisterViewModel = viewModel(factory = RegisterViewModelFactory(authRepository))
     val registerState by registerVm.state.collectAsState()
 
-    val homeRepository = remember { HomeRepositoryImpl() }
-    val homeVm: HomeViewModel = viewModel(factory = HomeViewModel.provideFactory(homeRepository))
-    val homeState by homeVm.state.collectAsState()
-
     var root by rememberSaveable { mutableStateOf<RootDestination?>(null) }
 
-    LaunchedEffect(onboardingCompletedState.value) {
+    LaunchedEffect(onboardingCompletedState.value, sessionSnapshot.value) {
         val completed = onboardingCompletedState.value ?: return@LaunchedEffect
+        val snapshot = sessionSnapshot.value ?: return@LaunchedEffect
+        val token = snapshot.token
         if (root == null) {
-            root = if (completed) RootDestination.MAIN else RootDestination.ONBOARDING
+            root = when {
+                !completed -> RootDestination.ONBOARDING
+                token.isNullOrBlank() -> RootDestination.LOGIN
+                else -> RootDestination.MAIN
+            }
         }
     }
 
-    if (root == null) return
+    val currentRoot = root ?: return
 
-    when (root!!) {
+    when (currentRoot) {
         RootDestination.ONBOARDING -> {
             OnboardingScreen(
                 onGoToRegister = { root = RootDestination.REGISTER },
@@ -154,77 +155,121 @@ fun InventoryHouseApp() {
         }
 
         RootDestination.MAIN -> {
+            MainContent(
+                sessionStore = sessionStore,
+                authRepository = authRepository,
+                onLoggedOut = { root = RootDestination.LOGIN }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MainContent(
+    sessionStore: SessionStore,
+    authRepository: RemoteAuthRepository,
+    onLoggedOut: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val inventoryRepository = remember {
+        InventoryRepository(ApiClient.inventoryApi(sessionStore))
+    }
+    val houseVm: HouseViewModel = viewModel(factory = HouseViewModel.provideFactory(inventoryRepository))
+    val houseState by houseVm.state.collectAsState()
+
+    var showSettingsScreen by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = showSettingsScreen) {
+        showSettingsScreen = false
+    }
+
+    when {
+        houseState.needsHouse -> {
+            HouseSetupScreen(
+                state = houseState,
+                onEvent = houseVm::onEvent,
+                modifier = Modifier.statusBarsPadding()
+            )
+        }
+
+        houseState.selectedHouse == null -> {
+            LoadingScreen()
+        }
+
+        showSettingsScreen -> {
+            SettingsScreen(
+                onBack = { showSettingsScreen = false },
+                onLogout = {
+                    scope.launch {
+                        authRepository.logout()
+                        onLoggedOut()
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        else -> {
+            val selectedHouse = houseState.selectedHouse ?: return
+            val houseId = selectedHouse.id
+            val productRepository = remember(houseId) {
+                RemoteProductRepository(
+                    inventoryRepository = inventoryRepository,
+                    houseId = houseId
+                )
+            }
             val pagerState = rememberPagerState(
                 initialPage = 0,
                 pageCount = { AppDestinations.entries.size }
             )
 
-            var showAddProductScreen by rememberSaveable { mutableStateOf(false) }
-            var showSettingsScreen by rememberSaveable { mutableStateOf(false) }
+            Box(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                ) { page ->
+                    when (AppDestinations.entries[page]) {
+                        AppDestinations.HOME -> DashboardRoute(
+                            houseState = houseState,
+                            productRepository = productRepository,
+                            onSettingsClick = { showSettingsScreen = true }
+                        )
 
-            val database = remember {
-                Room.databaseBuilder(
-                    appContext,
-                    AppDatabase::class.java,
-                    "stock_database"
-                ).build()
-            }
+                        AppDestinations.STOCK -> StockRoute(
+                            repository = productRepository,
+                            viewModelKey = "stock-$houseId"
+                        )
 
-            val productRepository = remember { InMemoryProductRepository(database.productDao()) }
+                        AppDestinations.ADD_PRODUCT -> ScannerRoute(
+                            repository = productRepository,
+                            viewModelKey = "scanner-$houseId"
+                        )
 
-            BackHandler(enabled = showAddProductScreen || showSettingsScreen) {
-                when {
-                    showAddProductScreen -> showAddProductScreen = false
-                    showSettingsScreen -> showSettingsScreen = false
-                }
-            }
-
-             if (showSettingsScreen) {
-                SettingsScreen(modifier = Modifier.fillMaxSize())
-            } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize().statusBarsPadding()
-                    ) { page ->
-                        when (AppDestinations.entries[page]) {
-                            AppDestinations.HOME -> HomeScreen(
-                                state = homeState,
-                                onEvent = homeVm::onEvent,
-                                onSettingsClick = { showSettingsScreen = true },
-                                modifier = Modifier
-                            )
-
-                            AppDestinations.STOCK -> StockRoute(
-                                repository = productRepository,
-                                modifier = Modifier
-                            )
-
-                            AppDestinations.ADD_PRODUCT -> ScannerRoute(
-                                repository = productRepository,
-                                modifier = Modifier,
-                                onAddProductClick = { showAddProductScreen = true }
-                            )
-
-                            AppDestinations.FOOD -> FoodScreen(modifier = Modifier)
-                            AppDestinations.PROFILE -> ProfileRoute(
-                                repository = productRepository,
-                                modifier = Modifier
-                            )
-                        }
+                        AppDestinations.PROFILE -> HouseScreen(
+                            state = houseState,
+                            onEvent = houseVm::onEvent
+                        )
                     }
-
-                    FloatingBottomBar(
-                        destinations = AppDestinations.entries,
-                        selectedIndex = pagerState.currentPage,
-                        onItemClick = { index ->
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        },
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    )
                 }
+
+                FloatingBottomBar(
+                    destinations = AppDestinations.entries,
+                    selectedIndex = pagerState.currentPage,
+                    onItemClick = { index ->
+                        scope.launch { pagerState.animateScrollToPage(index) }
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
 
@@ -258,7 +303,11 @@ private fun FloatingBottomBar(
             ) {
                 destinations.forEachIndexed { index, destination ->
                     val selected = selectedIndex == index
-                    val containerColor = if (selected) Color(0xFF1FA541) else Color(0xFFDFF5E3)
+                    val containerColor = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color(0xFFDFF5E3)
+                    }
                     val contentColor = if (selected) Color.White else Color(0xFF1D7F35)
 
                     Row(
@@ -276,16 +325,8 @@ private fun FloatingBottomBar(
                             imageVector = destination.icon,
                             contentDescription = destination.label,
                             tint = contentColor,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        /*if (selected) {
-                            Text(
-                                text = destination.label,
-                                color = contentColor,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }*/
                     }
                 }
             }

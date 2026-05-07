@@ -14,9 +14,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.AssistChip
@@ -41,8 +43,12 @@ import com.example.inventoryhouse.domain.repository.ProductRepository
 @Composable
 fun StockRoute(
     repository: ProductRepository,
+    viewModelKey: String? = null,
     modifier: Modifier = Modifier,
-    viewModel: StockViewModel = viewModel(factory = StockViewModel.provideFactory(repository))
+    viewModel: StockViewModel = viewModel(
+        key = viewModelKey,
+        factory = StockViewModel.provideFactory(repository)
+    )
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -97,12 +103,37 @@ fun StockScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Sort, contentDescription = null, tint = Color(0xFF33C93E))
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = Color(0xFF33C93E))
                     Text("Trier par: Date d'expiration", color = Color(0xFF33C93E))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.FilterList, contentDescription = null, tint = Color(0xFF33C93E))
                     Text("Filtrer", color = Color(0xFF33C93E))
+                }
+                IconButton(onClick = { onEvent(StockEvent.Refresh) }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Actualiser")
+                }
+            }
+        }
+
+        state.errorMessage?.let { message ->
+            item {
+                Text(message, color = MaterialTheme.colorScheme.error)
+            }
+        }
+
+        if (state.displayItems.isEmpty()) {
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("Stock vide", style = MaterialTheme.typography.titleMedium)
+                        Text("Scannez ou ajoutez un produit pour remplir cette maison.")
+                    }
                 }
             }
         }

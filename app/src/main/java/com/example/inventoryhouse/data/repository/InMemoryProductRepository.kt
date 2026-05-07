@@ -11,6 +11,8 @@ class InMemoryProductRepository(
 
     override fun getProductsStream(): Flow<List<Product>> = dao.getAll()
 
+    override suspend fun refresh() = Unit
+
     override suspend fun addProduct(product: Product) {
         dao.insert(product)
     }

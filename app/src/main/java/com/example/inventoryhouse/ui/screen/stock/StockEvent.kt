@@ -7,4 +7,5 @@ sealed interface StockEvent {
     data class SearchChanged(val query: String) : StockEvent
     data class SelectCategory(val category: Location?) : StockEvent
     data class RemoveProduct(val product: Product) : StockEvent
+    data object Refresh : StockEvent
 }

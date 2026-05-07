@@ -47,7 +47,7 @@ class RegisterViewModel(
         val localError = when {
             s.name.isBlank() -> "Veuillez renseigner votre nom."
             s.email.isBlank() -> "Veuillez renseigner votre email."
-            !s.passwordOk -> "Mot de passe : 6 caractères minimum."
+            !s.passwordOk -> "Mot de passe : 8 caracteres minimum."
             !s.matchOk -> "Les mots de passe ne correspondent pas."
             else -> null
         }

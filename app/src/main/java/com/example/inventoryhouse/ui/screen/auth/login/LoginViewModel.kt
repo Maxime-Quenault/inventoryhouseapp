@@ -29,6 +29,12 @@ class LoginViewModel(
             LoginEvent.ClearError ->
                 _state.update { it.copy(errorMessage = null) }
 
+            is LoginEvent.GoogleSignInFailed ->
+                _state.update { it.copy(errorMessage = event.message, isLoading = false) }
+
+            is LoginEvent.GoogleTokenReceived ->
+                submitGoogle(event.idToken) { onSuccess() }
+
             LoginEvent.Submit -> submit { _ -> onSuccess() }
         }
     }
@@ -48,6 +54,29 @@ class LoginViewModel(
                 onSuccess(result.token)
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, errorMessage = e.message ?: "Erreur de connexion") }
+            }
+        }
+    }
+
+    private fun submitGoogle(idToken: String, onSuccess: (token: String) -> Unit) {
+        if (idToken.isBlank()) {
+            _state.update { it.copy(errorMessage = "Jeton Google manquant") }
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                val result = authRepository.loginWithGoogle(idToken)
+                _state.update { it.copy(isLoading = false) }
+                onSuccess(result.token)
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Erreur de connexion Google"
+                    )
+                }
             }
         }
     }

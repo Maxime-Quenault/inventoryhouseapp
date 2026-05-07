@@ -24,6 +24,13 @@ class StockViewModel(private val repository: ProductRepository) : ViewModel() {
                 _state.update { it.copy(products = products) }
             }
             .launchIn(viewModelScope)
+
+        viewModelScope.launch {
+            runCatching { repository.refresh() }
+                .onFailure { error ->
+                    _state.update { it.copy(errorMessage = error.message ?: "Erreur de chargement du stock") }
+                }
+        }
     }
 
     fun onEvent(event: StockEvent) {
@@ -32,7 +39,18 @@ class StockViewModel(private val repository: ProductRepository) : ViewModel() {
             is StockEvent.SelectCategory -> _state.update { it.copy(selectedCategory = event.category) }
             is StockEvent.RemoveProduct -> {
                 viewModelScope.launch {
-                    repository.removeProduct(event.product)
+                    runCatching { repository.removeProduct(event.product) }
+                        .onFailure { error ->
+                            _state.update { it.copy(errorMessage = error.message ?: "Impossible de supprimer cet item") }
+                        }
+                }
+            }
+            StockEvent.Refresh -> {
+                viewModelScope.launch {
+                    runCatching { repository.refresh() }
+                        .onFailure { error ->
+                            _state.update { it.copy(errorMessage = error.message ?: "Erreur de chargement du stock") }
+                        }
                 }
             }
         }

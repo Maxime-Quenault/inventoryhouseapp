@@ -25,5 +25,7 @@ interface AuthRepository {
         password: String
     ) : AuthResponseDto
 
+    suspend fun loginWithGoogle(idToken: String): AuthResponseDto
+
     suspend fun logout()
 }
