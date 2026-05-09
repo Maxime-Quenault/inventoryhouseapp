@@ -156,6 +156,17 @@ fun DashboardScreen(
     }
 }
 
+private fun Product.displayName(): String {
+    val format = quantityUnit.trim().ifBlank { "piece" }
+    val countLabel = "(x${quantity.coerceAtLeast(1)})"
+
+    return if (format.equals("piece", ignoreCase = true)) {
+        "$name $countLabel"
+    } else {
+        "$name $format $countLabel"
+    }
+}
+
 @Composable
 private fun DashboardHeader(
     userName: String,
@@ -295,7 +306,7 @@ private fun UrgentProductRow(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = product.name,
+                    text = product.displayName(),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

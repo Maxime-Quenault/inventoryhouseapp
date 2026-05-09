@@ -59,11 +59,22 @@ private fun Product.toUiModel(): StockItemUi {
 
     return StockItemUi(
         id = id,
-        name = name,
-        details = "${quantity} ${quantityUnit} - ${location.name}",
+        name = displayName(),
+        details = location.name,
         category = location,
         expirationLabel = expirationLabel,
         expirationTone = expirationTone,
         sourceProduct = this
     )
+}
+
+private fun Product.displayName(): String {
+    val format = quantityUnit.trim().ifBlank { "piece" }
+    val countLabel = "(x${quantity.coerceAtLeast(1)})"
+
+    return if (format.equals("piece", ignoreCase = true)) {
+        "$name $countLabel"
+    } else {
+        "$name $format $countLabel"
+    }
 }

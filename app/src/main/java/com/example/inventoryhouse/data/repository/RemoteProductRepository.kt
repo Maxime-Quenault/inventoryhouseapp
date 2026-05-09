@@ -27,6 +27,16 @@ class RemoteProductRepository(
     }
 
     override suspend fun addProduct(product: Product) {
+        createProduct(product)
+        refresh()
+    }
+
+    override suspend fun addProducts(products: List<Product>) {
+        products.forEach { createProduct(it) }
+        refresh()
+    }
+
+    private suspend fun createProduct(product: Product) {
         val refs = getReferences()
         val location = refs.locations.matchLocation(product.location)
         val category = refs.stockCategories.firstOrNull()
@@ -44,7 +54,6 @@ class RemoteProductRepository(
                 .toInstant(ZoneOffset.UTC)
                 .toString()
         )
-        refresh()
     }
 
     override suspend fun removeProduct(product: Product) {

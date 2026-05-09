@@ -2,7 +2,9 @@ package com.example.inventoryhouse.ui.screen.scanner
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -25,13 +27,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -39,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inventoryhouse.data.enums.Location
@@ -82,6 +90,7 @@ import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E
 import com.google.mlkit.vision.common.InputImage
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.Executors
@@ -94,7 +103,11 @@ fun ScannerRoute(
     modifier: Modifier = Modifier,
     viewModel: ScannerViewModel = viewModel(
         key = viewModelKey,
-        factory = ScannerViewModel.provideFactory(ApiClient.openFoodFactsApi, repository)
+        factory = ScannerViewModel.provideFactory(
+            openFoodFactsApi = ApiClient.openFoodFactsApi,
+            productRepository = repository,
+            applicationContext = LocalContext.current.applicationContext
+        )
     )
 ) {
     val state by viewModel.state.collectAsState()
@@ -116,6 +129,64 @@ fun ScannerScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
+    var showReceiptDatePicker by remember { mutableStateOf(false) }
+    var pendingReceiptCapture by remember { mutableStateOf(false) }
+    var receiptCaptureUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    val receiptCaptureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val capturedUri = receiptCaptureUri
+        pendingReceiptCapture = false
+        if (success && capturedUri != null) {
+            onEvent(ScannerEvent.ReceiptImageCaptured(capturedUri))
+        }
+    }
+    fun launchReceiptCamera() {
+        runCatching { createReceiptImageUri(context) }
+            .onSuccess { uri ->
+                receiptCaptureUri = uri
+                receiptCaptureLauncher.launch(uri)
+            }
+            .onFailure { error ->
+                pendingReceiptCapture = false
+                onEvent(
+                    ScannerEvent.ReceiptCaptureFailed(
+                        error.message ?: "Impossible de preparer la photo du ticket"
+                    )
+                )
+            }
+    }
+    val receiptPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            onEvent(ScannerEvent.ReceiptPdfSelected(uri))
+        }
+    }
+    val receiptPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted && pendingReceiptCapture) {
+            launchReceiptCamera()
+        } else {
+            pendingReceiptCapture = false
+            onEvent(ScannerEvent.ReceiptCapturePermissionDenied)
+        }
+    }
+    val captureReceipt: () -> Unit = {
+        val permissionGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (permissionGranted) {
+            launchReceiptCamera()
+        } else {
+            pendingReceiptCapture = true
+            receiptPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     InventoryBackground(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -130,6 +201,37 @@ fun ScannerScreen(
         ) {
             item {
                 ScannerHeader()
+            }
+
+            item {
+                ReceiptCaptureCard(
+                    isProcessing = state.isReceiptProcessing,
+                    onCapture = captureReceipt,
+                    onImportPdf = { receiptPdfLauncher.launch("application/pdf") }
+                )
+            }
+
+            if (state.receiptDrafts.isNotEmpty()) {
+                item {
+                    ReceiptReviewCard(
+                        state = state,
+                        onEvent = onEvent,
+                        onOpenDatePicker = { showReceiptDatePicker = true }
+                    )
+                }
+            }
+
+            if (!state.isAddFormVisible) {
+                state.errorMessage?.let { message ->
+                    item {
+                        FeedbackMessage(text = message, isError = true)
+                    }
+                }
+                state.successMessage?.let { message ->
+                    item {
+                        FeedbackMessage(text = message, isError = false)
+                    }
+                }
             }
 
             item {
@@ -157,6 +259,16 @@ fun ScannerScreen(
         }
     }
 
+    if (showReceiptDatePicker) {
+        ProductDatePicker(
+            onDismiss = { showReceiptDatePicker = false },
+            onDatePicked = {
+                onEvent(ScannerEvent.ReceiptExpirationDateChanged(it))
+                showReceiptDatePicker = false
+            }
+        )
+    }
+
     if (showDatePicker) {
         ProductDatePicker(
             onDismiss = { showDatePicker = false },
@@ -181,6 +293,212 @@ private fun ScannerHeader() {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun ReceiptCaptureCard(
+    isProcessing: Boolean,
+    onCapture: () -> Unit,
+    onImportPdf: () -> Unit
+) {
+    ModernCard(containerColor = MaterialTheme.colorScheme.surface) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconBubble(
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Ticket de caisse", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Photo ou PDF puis validation des articles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                IconButton(
+                    onClick = onImportPdf,
+                    enabled = !isProcessing
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.UploadFile,
+                        contentDescription = "Importer un ticket PDF"
+                    )
+                }
+                IconButton(
+                    onClick = onCapture,
+                    enabled = !isProcessing
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Photographier un ticket"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReceiptReviewCard(
+    state: ScannerState,
+    onEvent: (ScannerEvent) -> Unit,
+    onOpenDatePicker: () -> Unit
+) {
+    ModernCard(containerColor = MaterialTheme.colorScheme.surface) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SectionHeader(
+                    title = "Ticket",
+                    modifier = Modifier.weight(1f)
+                )
+                StatusPill(
+                    text = "${state.selectedReceiptDrafts.size}/${state.receiptDrafts.size}",
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+
+            LocationDropdown(
+                selectedLocation = state.receiptLocation,
+                onLocationSelected = { onEvent(ScannerEvent.ReceiptLocationChanged(it)) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = state.receiptExpirationDate,
+                onValueChange = { onEvent(ScannerEvent.ReceiptExpirationDateChanged(it)) },
+                label = { Text("Date d'expiration") },
+                placeholder = { Text("yyyy-mm-dd") },
+                trailingIcon = {
+                    IconButton(onClick = onOpenDatePicker) {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = "Ouvrir le calendrier"
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                enabled = !state.isLoading
+            )
+
+            state.receiptDrafts.forEachIndexed { index, draft ->
+                ReceiptDraftRow(
+                    draft = draft,
+                    enabled = !state.isLoading,
+                    onEvent = onEvent
+                )
+                if (index < state.receiptDrafts.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
+
+            PrimaryActionButton(
+                text = "Ajouter les articles",
+                enabled = state.canAddReceipt,
+                isLoading = state.isLoading,
+                icon = Icons.Default.Add,
+                onClick = { onEvent(ScannerEvent.AddReceiptProducts) }
+            )
+
+            TextButton(
+                onClick = { onEvent(ScannerEvent.ClearReceiptDrafts) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isLoading
+            ) {
+                Text("Annuler")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReceiptDraftRow(
+    draft: ReceiptItemDraft,
+    enabled: Boolean,
+    onEvent: (ScannerEvent) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = draft.selected,
+                onCheckedChange = {
+                    onEvent(ScannerEvent.ReceiptDraftSelectedChanged(draft.id, it))
+                },
+                enabled = enabled
+            )
+            OutlinedTextField(
+                value = draft.name,
+                onValueChange = {
+                    onEvent(ScannerEvent.ReceiptDraftNameChanged(draft.id, it))
+                },
+                label = { Text("Article") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                enabled = enabled
+            )
+            IconButton(
+                onClick = { onEvent(ScannerEvent.RemoveReceiptDraft(draft.id)) },
+                enabled = enabled
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Retirer"
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = draft.packageFormat,
+                onValueChange = {
+                    onEvent(ScannerEvent.ReceiptDraftPackageFormatChanged(draft.id, it))
+                },
+                label = { Text("Format") },
+                placeholder = { Text("500g") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                enabled = enabled
+            )
+            CompactCountSelector(
+                count = draft.count,
+                enabled = enabled,
+                onDecrease = { onEvent(ScannerEvent.ReceiptDraftDecreaseCount(draft.id)) },
+                onIncrease = { onEvent(ScannerEvent.ReceiptDraftIncreaseCount(draft.id)) }
+            )
+        }
     }
 }
 
@@ -262,6 +580,17 @@ private fun AddProductCard(
                 selectedLocation = state.location,
                 onLocationSelected = { onEvent(ScannerEvent.LocationChanged(it)) },
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = state.quantityUnit,
+                onValueChange = { onEvent(ScannerEvent.QuantityUnitChanged(it)) },
+                label = { Text("Format") },
+                placeholder = { Text("ex : 500g, 1L, piece") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                enabled = !state.isLoading
             )
 
             QuantitySelector(
@@ -360,6 +689,44 @@ private fun QuantitySelector(
                 IconButton(onClick = onIncrease) {
                     Icon(Icons.Default.Add, contentDescription = "Augmenter")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactCountSelector(
+    count: Int,
+    enabled: Boolean,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+        ) {
+            IconButton(
+                onClick = onDecrease,
+                enabled = enabled
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = "Reduire")
+            }
+            Text(
+                text = "x$count",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(horizontal = 6.dp)
+            )
+            IconButton(
+                onClick = onIncrease,
+                enabled = enabled
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Augmenter")
             }
         }
     }
@@ -623,4 +990,15 @@ private val Location.displayLabel: String
 
 private fun imageProxySafeClose(previewView: PreviewView) {
     // Keeps the camera binding catch explicit while avoiding a noisy crash path.
+}
+
+private fun createReceiptImageUri(context: Context): Uri {
+    val imageDir = File(context.cacheDir, "receipt_images").apply { mkdirs() }
+    val imageFile = File.createTempFile("receipt_", ".jpg", imageDir)
+
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        imageFile
+    )
 }
